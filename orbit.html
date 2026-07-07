@@ -149,21 +149,24 @@
   </header>
 
   <p class="note">
-    An honest chart wearing a costume. The planet's position is the ensemble mean of whichever
-    datasets are checked below the controls — all six by default (NASA GISTEMP, HadCRUT5,
-    NOAAGlobalTemp, Berkeley Earth, ERA5, JMA); uncheck down to one to fly a single instrument's
-    record, or add them back one by one and watch the path barely move (common 1951–80 baseline, Gaussian-smoothed
-    σ ≈ 4 yr): horizontal — temperature anomaly; vertical — warming rate. The halo around the planet
-    is the live disagreement between the six datasets. The "sun" marks the mean 1880–1969 state and
-    its faint rings the orbit-era envelope; the planet's color runs blue → ember with the anomaly
-    itself. Everything else — stars, corona, comet tail — is staging, and changes no data point.
-    Toggle the axes off for a clean cinematic view (good for screen recording). The score is an
-    original ambient piece synthesized live in your browser — organ ostinato, drone, and a clock
-    tick in the spirit of a certain film about leaving home — with the mix swelling as the anomaly
-    grows; no recorded music is loaded (the actual Interstellar soundtrack is copyrighted, and
-    overlaying it on a public post invites a mute or takedown). Built from
-    scripts/build_compare.py. Generated <span id="gen">—</span>.
+    <strong>What's real:</strong> the path. Every position comes from actual temperature records —
+    NASA, the UK Met Office, NOAA, Berkeley Earth, Europe's ERA5, and Japan's weather agency,
+    averaged together (or just the ones you leave checked). Left–right is how warm Earth is;
+    up–down is how fast that's changing. The soft halo shows how much the six sources disagree —
+    barely at all. The "sun" is the steady climate of 1880–1969, the state we used to circle, and
+    the planet turns from ocean blue to ember as it heats.
+    <strong>What's staging:</strong> the stars, the glow, the comet tail — pure atmosphere, they
+    change nothing. The music is generated live by your browser and swells as the warming speeds
+    up; no recorded soundtrack is used.
   </p>
+  <details class="note">
+    <summary style="cursor:pointer">Technical details</summary>
+    Datasets: GISTEMP v4, HadCRUT5, NOAAGlobalTemp v6, Berkeley Earth, ERA5, JMA, each shifted to
+    a shared 1951–80 baseline and smoothed with a Gaussian kernel (σ ≈ 4 yr); the vertical axis is
+    the centered derivative of the smoothed series (°C/decade). The sun sits at the mean 1880–1969
+    state; its rings trace that era's envelope. Built by scripts/build_compare.py.
+    Generated <span id="gen">—</span>.
+  </details>
 </div>
 
 <script src="data/compare.js"></script>
