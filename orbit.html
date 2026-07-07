@@ -148,6 +148,7 @@
       <label class="toggle"><input type="checkbox" id="axes" checked> axes</label>
       <label class="toggle"><input type="checkbox" id="score" checked> score</label>
     </div>
+    <p class="note" id="exp-note" style="margin-top:6px;display:none"></p>
     <div class="sources" id="sources" role="group" aria-label="Datasets included in the planet's position"></div>
     <p class="note" style="margin-top:8px">click a dataset name to fly that record alone, from its own first year · checkboxes add or remove sources · "all six" resets</p>
   </header>
@@ -633,6 +634,10 @@ if (!REDUCED) setInterval(()=>{ if (!playing) draw(fy); }, 90);
 
 /* ---------- export: record canvas + score straight to a .webm download ---------- */
 const exportBtn=document.getElementById('export');
+function expNote(msg){
+  const n=document.getElementById('exp-note');
+  n.textContent=msg; n.style.display=msg?'block':'none';
+}
 function startExport(){
   if (recording||REDUCED) return;
   audioInit();
@@ -647,9 +652,19 @@ function startExport(){
   recorder.ondataavailable=e=>{ if (e.data.size) recChunks.push(e.data); };
   recorder.onstop=()=>{
     const blob=new Blob(recChunks,{type:'video/webm'});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob); a.download='orbitfall.webm'; a.click();
-    setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+    const url=URL.createObjectURL(blob);
+    let a=document.getElementById('save-rec');
+    if (!a){
+      a=document.createElement('a');
+      a.id='save-rec'; a.className='btn ghost'; a.style.textDecoration='none';
+      exportBtn.after(a);
+    }
+    a.href=url; a.download='orbitfall.webm';
+    a.textContent=`Save recording (${(blob.size/1e6).toFixed(1)} MB)`;
+    a.click();
+    expNote(window.self!==window.top
+      ? 'If no file appeared in Downloads: this shared page blocks saving files. Open orbit.html from the project folder on your computer and export there — or use the ready-made orbitfall.mp4.'
+      : 'Saved to your Downloads folder as orbitfall.webm. Run scripts\\make_gif.bat on it for an MP4 and GIF.');
   };
   recording=true;
   document.querySelector('.stage-shell').classList.add('recording');
