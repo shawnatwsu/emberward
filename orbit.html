@@ -67,6 +67,20 @@
     font-size: clamp(15px, 2.2vw, 21px); color: var(--ink);
     text-shadow: 0 2px 16px rgba(0,0,0,0.9); opacity: 0; pointer-events: none;
   }
+  .board {
+    position: absolute; left: 22px; top: 18px; pointer-events: none;
+    font-family: Consolas, "SF Mono", ui-monospace, monospace;
+    font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.9);
+  }
+  .board .bt {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .board .r { display: flex; gap: 9px; line-height: 1.55; }
+  .board .r b { color: var(--ink); }
+  .board .r.new b, .board .r.new span { color: var(--warm); }
+  .board .ft { font-size: 11px; color: var(--muted); margin-top: 5px; }
 
   .controls {
     display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 16px 2px 6px;
@@ -119,6 +133,7 @@
         <div class="stats"><span id="hud-anom">—</span> · <span id="hud-rate">—</span> · <span id="hud-spread">—</span></div>
       </div>
       <div class="caption" id="caption"></div>
+      <div class="board" id="board"></div>
     </div>
 
     <div class="controls">
@@ -128,6 +143,7 @@
       <label class="toggle"><input type="checkbox" id="axes" checked> axes</label>
     </div>
     <div class="sources" id="sources" role="group" aria-label="Datasets included in the planet's position"></div>
+    <p class="note" style="margin-top:8px">click a dataset name to fly that record alone, from its own first year · checkboxes add or remove sources · "all six" resets</p>
   </header>
 
   <p class="note">
@@ -182,7 +198,8 @@ const TRACKS = DS.map(d=>{
     const a=S[Math.max(0,i-1)], b=S[Math.min(n-1,i+1)];
     return (b-a)/(Math.min(n-1,i+1)-Math.max(0,i-1))*10;
   });
-  return {id:d.id, y0:d.years[0], S, R};
+  return {id:d.id, y0:d.years[0], S, R, A:d.anoms,
+          partialYear: d.partial_last ? d.years[d.years.length-1] : -1};
 });
 function buildEns(ids){
   const tr=TRACKS.filter(t=>ids.includes(t.id));
@@ -193,13 +210,14 @@ function buildEns(ids){
     const pts=[];
     tr.forEach(t=>{
       const i=y-t.y0;
-      if (i>=0&&i<t.S.length) pts.push({x:t.S[i],v:t.R[i]});
+      if (i>=0&&i<t.S.length) pts.push({x:t.S[i],v:t.R[i],a:t.A[i],partial:t.partialYear===y});
     });
     if (!pts.length) continue;
     const mx=pts.reduce((a,p)=>a+p.x,0)/pts.length;
     const mv=pts.reduce((a,p)=>a+p.v,0)/pts.length;
+    const raw=pts.reduce((a,p)=>a+p.a,0)/pts.length;
     const spread=pts.length>1?Math.max(...pts.map(p=>p.x))-Math.min(...pts.map(p=>p.x)):0;
-    out.push({y, x:mx, v:mv, spread, n:pts.length});
+    out.push({y, x:mx, v:mv, raw, spread, n:pts.length, partial:pts.every(p=>p.partial)});
   }
   return out;
 }
@@ -207,10 +225,15 @@ const ALL_IDS=TRACKS.map(t=>t.id);
 const FULL=buildEns(ALL_IDS);      // fixed reference: sun, rings, scales
 let ENS=FULL.slice(), NY=ENS.length;
 
-/* dataset picker chips */
+/* dataset picker chips: click name = solo, checkbox = add/remove */
 const srcBox=document.getElementById('sources');
+const allBtn=document.createElement('label');
+allBtn.textContent='all six';
+allBtn.style.cursor='pointer';
+srcBox.appendChild(allBtn);
 DS.forEach(d=>{
   const l=document.createElement('label');
+  l.className='ds';
   l.innerHTML=`<input type="checkbox" checked data-id="${d.id}">`+
     `<i style="background:${COLORS[d.id]}"></i>${SHORT[d.id]} · ${d.years[0]}–${d.years[d.years.length-1]}`;
   srcBox.appendChild(l);
@@ -386,8 +409,20 @@ function draw(fy){
   ctx.fillStyle=body;
   ctx.beginPath(); ctx.arc(hx,hy,9,0,6.28); ctx.fill();
 
+  /* running leaderboard: hottest years measured so far (raw annual means) */
+  const yrNow=Math.floor(s.y);
+  if (yrNow!==lastBoardYear){
+    lastBoardYear=yrNow;
+    const top=ENS.filter(e=>e.y<=yrNow).slice().sort((a,b)=>b.raw-a.raw).slice(0,5);
+    document.getElementById('board').innerHTML=
+      '<div class="bt">hottest years so far</div>'+
+      top.map((e,i)=>`<div class="r${e.y===yrNow?' new':''}"><span>${i+1}.</span>`+
+        `<b>${e.y}${e.partial?'*':''}</b><span>${e.raw>=0?'+':''}${e.raw.toFixed(2)} °C</span></div>`).join('')+
+      (top.some(e=>e.partial)?'<div class="ft">* year-to-date</div>':'');
+  }
+
   /* HUD + caption */
-  const yr=Math.floor(s.y);
+  const yr=yrNow;
   document.getElementById('hud-year').textContent=yr;
   document.getElementById('hud-anom').textContent=(s.x>=0?'+':'')+s.x.toFixed(2)+' °C';
   document.getElementById('hud-rate').textContent=(s.v>=0?'+':'')+s.v.toFixed(2)+' °C/dec';
@@ -403,7 +438,7 @@ function draw(fy){
 /* ---------- playback ---------- */
 const scrub=document.getElementById('scrub');
 scrub.max=String((NY-1)*10);
-let fy=REDUCED?NY-1:0, playing=false, lastT=null, raf=null;
+let fy=REDUCED?NY-1:0, playing=false, lastT=null, raf=null, lastBoardYear=-1;
 function speed(year){ return year<1968?11:3.6; } // years per second: cruise, then slow for the escape
 function frame(t){
   if (!playing) return;
@@ -432,18 +467,36 @@ document.getElementById('restart').addEventListener('click',()=>{
 scrub.addEventListener('input',()=>{ stop('Play'); fy=parseInt(scrub.value,10)/10; draw(fy); });
 document.getElementById('axes').addEventListener('change',e=>{ axesOn=e.target.checked; if(!playing) draw(fy); });
 
-/* dataset picker: the planet becomes the mean of whatever is checked */
+/* dataset picker: click a name to solo it; checkboxes add/remove.
+   Every change restarts the flight at the selection's own first year. */
 const srcChecks=[...document.querySelectorAll('.sources input')];
-srcChecks.forEach(c=>c.addEventListener('change',()=>{
-  const ids=srcChecks.filter(x=>x.checked).map(x=>x.dataset.id);
-  if (!ids.length){ c.checked=true; return; }   // always at least one camera
-  const curYear=ENS[Math.max(0,Math.min(NY-1,Math.floor(fy)))].y;
-  ENS=buildEns(ids); NY=ENS.length;
+function currentIds(){ return srcChecks.filter(x=>x.checked).map(x=>x.dataset.id); }
+function applySelection(){
+  ENS=buildEns(currentIds()); NY=ENS.length;
   scrub.max=String((NY-1)*10);
-  fy=Math.max(0,Math.min(NY-1,curYear-ENS[0].y));
-  scrub.value=String(Math.round(fy*10));
-  draw(fy);
+  lastBoardYear=-1;
+  stop('Play');
+  if (REDUCED){ fy=NY-1; scrub.value=scrub.max; draw(fy); return; }
+  fy=0; scrub.value='0'; draw(0);
+  playing=true; playBtn.textContent='Pause'; raf=requestAnimationFrame(frame);
+}
+srcChecks.forEach(c=>c.addEventListener('change',()=>{
+  if (!currentIds().length){ c.checked=true; return; }   // always at least one camera
+  applySelection();
 }));
+document.querySelectorAll('.sources label.ds').forEach(l=>{
+  l.addEventListener('click',e=>{
+    if (e.target.tagName==='INPUT') return;    // checkbox keeps its own behavior
+    e.preventDefault();
+    const id=l.querySelector('input').dataset.id;
+    srcChecks.forEach(x=>{ x.checked=(x.dataset.id===id); });
+    applySelection();
+  });
+});
+allBtn.addEventListener('click',()=>{
+  srcChecks.forEach(x=>{ x.checked=true; });
+  applySelection();
+});
 
 /* ambient redraw so stars twinkle while paused (skipped for reduced motion) */
 if (!REDUCED) setInterval(()=>{ if (!playing) draw(fy); }, 90);
