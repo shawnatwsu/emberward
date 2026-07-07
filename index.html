@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>The Flattening Well — climate as a dynamical system</title>
+<style>
+  :root {
+    --page: #eef1f3;
+    --surface: #f7f9fa;
+    --ink: #16202a;
+    --ink-2: #4d5a66;
+    --muted: #7d8892;
+    --grid: #dde3e6;
+    --axis: #c2cad0;
+    --border: rgba(22,32,42,0.10);
+    --cool: #2a78d6;
+    --warm: #e34948;
+    --mid: #aab3ba;
+    --well-fill: rgba(42,120,214,0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #0b0f13;
+      --surface: #10151a;
+      --ink: #e9edf0;
+      --ink-2: #aab6bf;
+      --muted: #75808a;
+      --grid: #232b32;
+      --axis: #38424b;
+      --border: rgba(233,237,240,0.10);
+      --cool: #3987e5;
+      --warm: #e66767;
+      --mid: #4c565f;
+      --well-fill: rgba(57,135,229,0.10);
+    }
+  }
+  :root[data-theme="light"] {
+    --page: #eef1f3; --surface: #f7f9fa; --ink: #16202a; --ink-2: #4d5a66;
+    --muted: #7d8892; --grid: #dde3e6; --axis: #c2cad0; --border: rgba(22,32,42,0.10);
+    --cool: #2a78d6; --warm: #e34948; --mid: #aab3ba; --well-fill: rgba(42,120,214,0.08);
+  }
+  :root[data-theme="dark"] {
+    --page: #0b0f13; --surface: #10151a; --ink: #e9edf0; --ink-2: #aab6bf;
+    --muted: #75808a; --grid: #232b32; --axis: #38424b; --border: rgba(233,237,240,0.10);
+    --cool: #3987e5; --warm: #e66767; --mid: #4c565f; --well-fill: rgba(57,135,229,0.10);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    line-height: 1.55;
+    margin: 0;
+  }
+  .wrap { max-width: 1020px; margin: 0 auto; padding: 48px 20px 80px; }
+
+  .eyebrow {
+    font-family: Consolas, "SF Mono", ui-monospace, monospace;
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 14px;
+  }
+  h1 {
+    font-family: Charter, "Iowan Old Style", Georgia, "Times New Roman", serif;
+    font-weight: 600; font-size: clamp(30px, 5vw, 46px); line-height: 1.12;
+    letter-spacing: -0.01em; margin: 0 0 16px; text-wrap: balance;
+  }
+  h2 {
+    font-family: Charter, "Iowan Old Style", Georgia, serif;
+    font-weight: 600; font-size: clamp(22px, 3.2vw, 29px); line-height: 1.2;
+    margin: 0 0 10px; text-wrap: balance;
+  }
+  .lede { color: var(--ink-2); font-size: 16.5px; max-width: 62ch; margin: 0 0 26px; }
+  section { margin-top: 72px; }
+  .hero .lede { font-size: 17.5px; }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 18px 12px;
+  }
+  .panel-title {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin: 0 2px 4px;
+  }
+  .panel-title .t { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+  .panel-title .u {
+    font-family: Consolas, ui-monospace, monospace; font-size: 11.5px; color: var(--muted);
+  }
+  .chart-box { position: relative; }
+  svg { display: block; width: 100%; height: auto; }
+  svg text {
+    font-family: Consolas, "SF Mono", ui-monospace, monospace;
+    font-size: 11px; fill: var(--muted);
+  }
+  svg .annot { font-family: "Segoe UI", system-ui, sans-serif; font-size: 12px; fill: var(--ink-2); }
+  svg .annot-strong { font-weight: 600; fill: var(--ink); }
+
+  .tooltip {
+    position: absolute; pointer-events: none; display: none; z-index: 4;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 7px; padding: 7px 10px; box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    font-size: 12px; color: var(--ink-2); white-space: nowrap;
+  }
+  .tooltip .yr { font-weight: 700; color: var(--ink); font-size: 13px; }
+  .tooltip .num { font-family: Consolas, ui-monospace, monospace; color: var(--ink); }
+
+  .legend-div {
+    display: flex; align-items: center; gap: 8px; margin: 10px 2px 4px;
+    font-size: 11.5px; color: var(--muted);
+    font-family: Consolas, ui-monospace, monospace;
+  }
+  .ramp { height: 8px; width: 150px; border-radius: 4px;
+    background: linear-gradient(90deg, var(--cool), var(--mid), var(--warm)); }
+
+  .well-controls {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    margin: 14px 2px 6px;
+  }
+  .well-controls label { font-size: 13px; color: var(--ink-2); font-weight: 600; }
+  input[type="range"] { accent-color: var(--cool); width: min(340px, 100%); }
+  input[type="range"]:focus-visible { outline: 2px solid var(--cool); outline-offset: 3px; }
+  .readout {
+    font-family: Consolas, ui-monospace, monospace; font-size: 12.5px;
+    color: var(--ink-2); display: flex; gap: 18px; flex-wrap: wrap;
+  }
+  .readout b { color: var(--ink); font-weight: 700; }
+  .state-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 3px 12px; font-size: 12.5px; font-weight: 600; color: var(--ink);
+    background: var(--page);
+  }
+  .state-chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--cool); }
+  .btn {
+    font: 600 12.5px "Segoe UI", system-ui, sans-serif;
+    color: var(--ink-2); background: none; border: 1px solid var(--border);
+    border-radius: 7px; padding: 5px 12px; cursor: pointer;
+  }
+  .btn:hover { color: var(--ink); border-color: var(--muted); }
+  .btn:focus-visible { outline: 2px solid var(--cool); outline-offset: 2px; }
+
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .duo { grid-template-columns: 1fr; } }
+
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 820px) { .cards { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 18px 16px;
+  }
+  .card h3 { margin: 0 0 8px; font-size: 15px; }
+  .card p { margin: 0; font-size: 13.5px; color: var(--ink-2); }
+  .card .tag {
+    font-family: Consolas, ui-monospace, monospace; font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+    display: block; margin-bottom: 10px;
+  }
+
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 40px; max-width: 72ch; }
+  details { margin-top: 14px; }
+  summary { cursor: pointer; font-size: 13px; color: var(--ink-2); font-weight: 600; }
+  table {
+    border-collapse: collapse; margin-top: 10px; font-size: 12.5px;
+    font-family: Consolas, ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td { padding: 3px 14px 3px 0; text-align: right; color: var(--ink-2); }
+  th { color: var(--ink); border-bottom: 1px solid var(--axis); }
+  td.src { text-align: left; }
+  .table-scroll { max-height: 300px; overflow: auto; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="hero">
+    <p class="eyebrow">visscience · prototype 01 · state-space climatology</p>
+    <h1>The climate is leaving its orbit.</h1>
+    <p class="lede">
+      A century and a half of global temperature — through <span data-fill="last-label">the present</span> —
+      drawn not as a timeline but as a <strong>phase portrait</strong>: where the climate <em>is</em>
+      (horizontal) against how fast it is <em>moving</em> (vertical). Time is implicit; dynamics are
+      explicit. For ninety years the system circled a fixed point, the signature of a stable
+      attractor. Around 1970 the trajectory broke out and has not looked back.
+    </p>
+
+    <div class="panel">
+      <div class="panel-title">
+        <span class="t">Global mean temperature, <span data-fill="range-label">1880–</span>, in state space</span>
+        <span class="u">x: anomaly vs 1951–80 (°C) · y: warming rate (°C / decade)</span>
+      </div>
+      <div class="chart-box" id="phase-box">
+        <svg id="phase" viewBox="0 0 960 520" role="img"
+             aria-label="Phase portrait of global temperature: anomaly versus rate of change, 1880 to present. The trajectory orbits near zero until about 1970, then moves steadily toward higher anomaly and higher warming rate."></svg>
+        <div class="tooltip" id="phase-tip"></div>
+      </div>
+      <div class="legend-div">
+        <span>cooler</span><span class="ramp" aria-hidden="true"></span><span>warmer · trajectory colored by anomaly · open ring = year to date</span>
+      </div>
+    </div>
+  </header>
+
+  <section>
+    <h2>Tipping has a shape.</h2>
+    <p class="lede">
+      A tipping element like the Atlantic overturning circulation (AMOC) behaves like a ball resting
+      in a potential well. Forcing — freshwater from Greenland melt — tilts the landscape. The well
+      the ball sits in grows shallower long before it disappears; when it vanishes at the
+      <strong>fold</strong>, the ball rolls to the other state. Drag the forcing past the fold, then
+      try to drag it back: the return trip is not the same as the trip out. That asymmetry is
+      hysteresis, and it is why a collapsed circulation would not simply restart.
+    </p>
+
+    <div class="panel">
+      <div class="panel-title">
+        <span class="t">Interactive: a fold bifurcation with hysteresis</span>
+        <span class="u">U(x) = x⁴/4 − x²/2 + h·x</span>
+      </div>
+      <div class="chart-box">
+        <svg id="well" viewBox="0 0 960 400" role="img"
+             aria-label="Interactive potential-well diagram. A slider controls forcing; past a critical value the well holding the ball vanishes and the ball rolls to the alternative state."></svg>
+      </div>
+      <div class="well-controls">
+        <label for="hslider">Forcing h</label>
+        <input type="range" id="hslider" min="-0.5" max="0.5" step="0.005" value="0"
+               aria-describedby="well-read">
+        <button class="btn" id="well-reset" type="button">Reset</button>
+        <span class="state-chip"><span class="dot" id="state-dot"></span><span id="state-label">Overturning ON</span></span>
+      </div>
+      <div class="readout" id="well-read">
+        <span>h = <b id="h-val">0.000</b></span>
+        <span>fold at <b>|h| = 0.385</b></span>
+        <span>distance to fold: <b id="fold-dist">0.385</b></span>
+        <span>resilience U″(x): <b id="resil">—</b></span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The fall announces itself.</h2>
+    <p class="lede">
+      As a well shallows, recovery from small shocks slows down — so year-to-year fluctuations grow
+      larger and more persistent. Rising <strong>variance</strong> and rising <strong>lag-1
+      autocorrelation</strong> are the standard early-warning statistics of critical slowing down.
+      Below, both are computed live in your browser from the instrumental record (31-year sliding
+      window on detrended residuals). These are the same instruments used to argue the AMOC is
+      destabilizing (Boers 2021; Ditlevsen &amp; Ditlevsen 2023) — here pointed at the global record
+      as a demonstration of method.
+    </p>
+
+    <div class="duo">
+      <div class="panel">
+        <div class="panel-title">
+          <span class="t">Lag-1 autocorrelation of residuals</span>
+          <span class="u" id="ac1-tau"></span>
+        </div>
+        <div class="chart-box" id="ac1-box">
+          <svg id="ac1" viewBox="0 0 460 240" role="img" aria-label="Rolling lag-1 autocorrelation of detrended temperature residuals over time."></svg>
+          <div class="tooltip" id="ac1-tip"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">
+          <span class="t">Variance of residuals (°C²)</span>
+          <span class="u" id="var-tau"></span>
+        </div>
+        <div class="chart-box" id="var-box">
+          <svg id="varc" viewBox="0 0 460 240" role="img" aria-label="Rolling variance of detrended temperature residuals over time."></svg>
+          <div class="tooltip" id="var-tip"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Where this goes as science.</h2>
+    <p class="lede">
+      The portrait above is a demonstration. The research program behind it is to make the
+      dynamical-systems view <em>operational</em> — measured continuously, on open data, for every
+      major tipping element.
+    </p>
+    <div class="cards">
+      <div class="card">
+        <span class="tag">01 · observatory</span>
+        <h3>A live tipping-point observatory</h3>
+        <p>Compute early-warning indicators continuously from open feeds — RAPID array overturning
+        transport, subpolar-gyre SST, GRACE ice mass, Amazon VOD — with honest uncertainty, published
+        as a versioned, citable data product rather than a one-off paper figure.</p>
+      </div>
+      <div class="card">
+        <span class="tag">02 · landscape</span>
+        <h3>Potentials reconstructed from data</h3>
+        <p>The well above is a cartoon; the real one can be estimated. Langevin/Fokker–Planck
+        reconstruction turns observed fluctuations into an empirical potential landscape — letting us
+        <em>watch the well flatten</em> in measurements instead of assuming its shape.</p>
+      </div>
+      <div class="card">
+        <span class="tag">03 · cascade</span>
+        <h3>Coupled tipping cascades</h3>
+        <p>Tipping elements interact: Greenland melt freshens the Atlantic; an AMOC slowdown shifts
+        monsoons and Amazon rainfall. A probabilistic cascade graph over the elements — with
+        early-warning state as node input — connects local warnings into a global risk picture.</p>
+      </div>
+    </div>
+  </section>
+
+  <p class="note" id="data-note">
+    Temperature series: NASA GISTEMP v4 global annual means relative to 1951–1980, extended through
+    the current year with the ERA5 global 2 m temperature series from C3S Climate Pulse
+    (<span data-fill="era5-note">rebaselined to 1951–80</span>). The running year is a year-to-date
+    mean and is drawn as an open ring. Trajectory smoothed with a Gaussian kernel (σ ≈ 4 yr); rate
+    is the centered derivative of the smoothed series. Early-warning panels follow Dakos et&nbsp;al.
+    (2012): Gaussian detrending, 31-year sliding window, Kendall τ trend statistic. The fold model
+    is the normal form of a saddle-node bifurcation, the canonical reduced model for AMOC
+    bistability (Stommel 1961). Data build: <span data-fill="generated">—</span>.
+  </p>
+
+  <details>
+    <summary>Data table — annual anomalies (°C)</summary>
+    <div class="table-scroll"><table id="data-table">
+      <thead><tr><th>Year</th><th>Anomaly</th><th>Smoothed</th><th>Rate /decade</th><th class="src">Source</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </details>
+</div>
+
+<script src="data/series.js"></script>
+<script>
+"use strict";
+/* ---------- data (built by scripts/build_data.py) ---------- */
+const ROWS = window.VS_DATA.rows;
+const META = window.VS_DATA.meta;
+const N = ROWS.length;
+const YEARS = ROWS.map(r=>r.year);
+const ANOM  = ROWS.map(r=>r.anom);
+const LAST = ROWS[N-1];
+
+document.querySelectorAll('[data-fill="last-label"]').forEach(e=>
+  e.textContent = LAST.partial ? `${LAST.year} year-to-date` : String(LAST.year));
+document.querySelectorAll('[data-fill="range-label"]').forEach(e=>
+  e.textContent = `${YEARS[0]}–${LAST.year}`);
+document.querySelectorAll('[data-fill="generated"]').forEach(e=>
+  e.textContent = `${META.generated}, ERA5 through ${META.era5_last_day}`);
+document.querySelectorAll('[data-fill="era5-note"]').forEach(e=>
+  e.textContent = META.baseline.replace('degC','°C'));
+
+/* ---------- helpers ---------- */
+function gaussianSmooth(arr, sigma){
+  const out = new Array(arr.length);
+  const half = Math.ceil(sigma*3);
+  for (let i=0;i<arr.length;i++){
+    let s=0, w=0;
+    for (let k=-half;k<=half;k++){
+      const j=i+k;
+      if (j<0||j>=arr.length) continue;
+      const g=Math.exp(-(k*k)/(2*sigma*sigma));
+      s+=arr[j]*g; w+=g;
+    }
+    out[i]=s/w;
+  }
+  return out;
+}
+const SMOOTH = gaussianSmooth(ANOM, 4);
+const RATE = SMOOTH.map((_,i)=>{
+  const a = SMOOTH[Math.max(0,i-1)], b = SMOOTH[Math.min(N-1,i+1)];
+  const span = Math.min(N-1,i+1)-Math.max(0,i-1);
+  return (b-a)/span*10; // °C per decade
+});
+const RESID = ANOM.map((v,i)=>v-SMOOTH[i]);
+
+function cssVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function hexToRgb(h){
+  h=h.replace('#','');
+  if (h.length===3) h=h.split('').map(c=>c+c).join('');
+  return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+}
+function mix(c1,c2,t){
+  const a=hexToRgb(c1), b=hexToRgb(c2);
+  return `rgb(${Math.round(a[0]+(b[0]-a[0])*t)},${Math.round(a[1]+(b[1]-a[1])*t)},${Math.round(a[2]+(b[2]-a[2])*t)})`;
+}
+function divergingColor(anom){
+  const cool=cssVar('--cool'), warm=cssVar('--warm'), mid=cssVar('--mid');
+  const t=Math.max(-1,Math.min(1,anom/1.3));
+  return t<0 ? mix(mid,cool,-t) : mix(mid,warm,t);
+}
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const svgNS='http://www.w3.org/2000/svg';
+function el(parent, tag, attrs){
+  const e=document.createElementNS(svgNS,tag);
+  for (const k in attrs) e.setAttribute(k,attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function ticks(lo, hi, step){
+  const out=[];
+  for (let v=Math.ceil(lo/step-1e-9)*step; v<=hi+1e-9; v+=step) out.push(Math.round(v*1000)/1000);
+  return out;
+}
+
+/* ================= phase portrait ================= */
+const phase = document.getElementById('phase');
+const P = {l:70, r:30, t:26, b:46, W:960, H:520};
+const XD=[Math.min(...SMOOTH)-0.14, Math.max(...SMOOTH)+0.28];
+const YD=[Math.min(...RATE)-0.06, Math.max(...RATE)+0.08];
+const px = v => P.l + (v-XD[0])/(XD[1]-XD[0])*(P.W-P.l-P.r);
+const py = v => P.H-P.b - (v-YD[0])/(YD[1]-YD[0])*(P.H-P.t-P.b);
+
+function drawPhase(){
+  phase.innerHTML='';
+  const g=el(phase,'g',{});
+  ticks(XD[0],XD[1],0.2).forEach(x=>{
+    const X=px(x);
+    el(g,'line',{x1:X,y1:P.t,x2:X,y2:P.H-P.b,stroke:'var(--grid)','stroke-width':1});
+    el(g,'text',{x:X,y:P.H-P.b+18,'text-anchor':'middle'}).textContent=(x===0?'0.0':x.toFixed(1));
+  });
+  ticks(YD[0],YD[1],0.1).forEach(y=>{
+    const Y=py(y);
+    el(g,'line',{x1:P.l,y1:Y,x2:P.W-P.r,y2:Y,stroke:'var(--grid)','stroke-width':1});
+    el(g,'text',{x:P.l-8,y:Y+4,'text-anchor':'end'}).textContent=(y===0?'0.0':y.toFixed(1));
+  });
+  el(g,'line',{x1:px(0),y1:P.t,x2:px(0),y2:P.H-P.b,stroke:'var(--axis)','stroke-width':1});
+  el(g,'line',{x1:P.l,y1:py(0),x2:P.W-P.r,y2:py(0),stroke:'var(--axis)','stroke-width':1});
+  const xt=el(phase,'text',{x:(P.l+P.W-P.r)/2,y:P.H-8,'text-anchor':'middle'});
+  xt.textContent='temperature anomaly (°C vs 1951–80)';
+  const yt=el(phase,'text',{x:16,y:(P.t+P.H-P.b)/2,'text-anchor':'middle',
+    transform:`rotate(-90 16 ${(P.t+P.H-P.b)/2})`});
+  yt.textContent='warming rate (°C / decade)';
+
+  const traj=el(phase,'g',{fill:'none','stroke-linecap':'round'});
+  const segs=[];
+  for (let i=0;i<N-1;i++){
+    const s=el(traj,'line',{
+      x1:px(SMOOTH[i]), y1:py(RATE[i]), x2:px(SMOOTH[i+1]), y2:py(RATE[i+1]),
+      stroke:divergingColor((SMOOTH[i]+SMOOTH[i+1])/2), 'stroke-width':2.4
+    });
+    segs.push(s);
+  }
+  const marks=el(phase,'g',{});
+  [1880,1900,1920,1940,1960,1980,2000,2020].forEach(yr=>{
+    const i=yr-YEARS[0];
+    if (i<0||i>=N) return;
+    el(marks,'circle',{cx:px(SMOOTH[i]),cy:py(RATE[i]),r:3.4,
+      fill:divergingColor(SMOOTH[i]),stroke:'var(--surface)','stroke-width':2});
+  });
+  const lab=(yr,dx,dy,anchor)=>{
+    const i=yr-YEARS[0];
+    if (i<0||i>=N) return;
+    const t=el(marks,'text',{x:px(SMOOTH[i])+dx,y:py(RATE[i])+dy,'text-anchor':anchor||'start'});
+    t.textContent=yr;
+  };
+  lab(1880,8,-6); lab(1920,-10,14,'end'); lab(1960,8,14); lab(2000,10,-4); lab(2020,-14,4,'end');
+  // endpoint: open ring if the running year is partial
+  const iE=N-1;
+  el(marks,'circle',{cx:px(SMOOTH[iE]),cy:py(RATE[iE]),r:6,
+    fill: LAST.partial ? 'var(--surface)' : divergingColor(SMOOTH[iE]),
+    stroke: LAST.partial ? divergingColor(SMOOTH[iE]) : 'var(--surface)',
+    'stroke-width':2.5});
+  const e1=el(marks,'text',{x:px(SMOOTH[iE])+12,y:py(RATE[iE])+4,class:'annot annot-strong'});
+  e1.textContent=LAST.partial ? `${LAST.year} YTD` : String(LAST.year);
+
+  const a1=el(phase,'text',{x:px(-0.18),y:py(YD[0]+0.045),class:'annot','text-anchor':'middle'});
+  a1.textContent='1880–1975: bounded orbit around a stable state';
+  const a2=el(phase,'text',{x:px(XD[0]+(XD[1]-XD[0])*0.62),y:py(YD[1]-0.03),class:'annot','text-anchor':'middle'});
+  a2.textContent='post-1975: monotone escape — no return loop';
+
+  if (!REDUCED){
+    segs.forEach(s=>s.setAttribute('opacity','0'));
+    let k=0;
+    (function step(){
+      for (let c=0;c<3 && k<segs.length;c++) segs[k++].setAttribute('opacity','1');
+      if (k<segs.length) requestAnimationFrame(step);
+    })();
+  }
+
+  const hover=el(phase,'circle',{r:8,fill:'none',stroke:'var(--ink)','stroke-width':1.5,opacity:0});
+  const box=document.getElementById('phase-box'), tip=document.getElementById('phase-tip');
+  const overlay=el(phase,'rect',{x:P.l,y:P.t,width:P.W-P.l-P.r,height:P.H-P.t-P.b,fill:'transparent'});
+  overlay.addEventListener('pointermove',ev=>{
+    const r=phase.getBoundingClientRect();
+    const sx=(ev.clientX-r.left)*P.W/r.width, sy=(ev.clientY-r.top)*P.H/r.height;
+    let best=0,bd=1e9;
+    for (let i=0;i<N;i++){
+      const d=(px(SMOOTH[i])-sx)**2+(py(RATE[i])-sy)**2;
+      if (d<bd){bd=d;best=i;}
+    }
+    hover.setAttribute('cx',px(SMOOTH[best])); hover.setAttribute('cy',py(RATE[best]));
+    hover.setAttribute('opacity','1');
+    tip.style.display='block';
+    const ytd = ROWS[best].partial ? ' (YTD)' : '';
+    tip.innerHTML=`<span class="yr">${YEARS[best]}${ytd}</span><br>`+
+      `anomaly <span class="num">${ANOM[best].toFixed(2)} °C</span><br>`+
+      `rate <span class="num">${RATE[best].toFixed(3)} °C/dec</span><br>`+
+      `<span class="num">${ROWS[best].src}</span>`;
+    const bx=box.getBoundingClientRect();
+    let tx=(px(SMOOTH[best]))*bx.width/P.W+14, ty=(py(RATE[best]))*bx.height/P.H-10;
+    if (tx>bx.width-150) tx-=170;
+    tip.style.left=tx+'px'; tip.style.top=Math.max(0,ty-30)+'px';
+  });
+  overlay.addEventListener('pointerleave',()=>{
+    hover.setAttribute('opacity','0'); tip.style.display='none';
+  });
+}
+
+/* ================= the well ================= */
+const wellSvg=document.getElementById('well');
+const hSlider=document.getElementById('hslider');
+const HC=2/(3*Math.sqrt(3)); // ≈0.3849 fold
+const WX=[-1.85,1.85], WY=[-0.62,0.75];
+const WP={l:56,r:26,t:18,b:34,W:960,H:400};
+const wx=v=>WP.l+(v-WX[0])/(WX[1]-WX[0])*(WP.W-WP.l-WP.r);
+const wy=v=>WP.H-WP.b-(v-WY[0])/(WY[1]-WY[0])*(WP.H-WP.t-WP.b);
+const U=(x,h)=>0.25*x**4-0.5*x*x+h*x;
+const dU=(x,h)=>x**3-x+h;
+const d2U=x=>3*x*x-1;
+
+let ballX=1, hVal=0, wellCurve, ballEl, wellFill;
+function equilibria(h){
+  const roots=[];
+  let prev=dU(WX[0],h);
+  for (let x=WX[0]+0.001;x<=WX[1];x+=0.001){
+    const v=dU(x,h);
+    if (prev===0||prev*v<0) roots.push(x);
+    prev=v;
+  }
+  return roots.filter(x=>d2U(x)>0);
+}
+function drawWellStatic(){
+  wellSvg.innerHTML='';
+  el(wellSvg,'text',{x:wx(-1),y:WP.H-10,'text-anchor':'middle'}).textContent='state B · overturning OFF';
+  el(wellSvg,'text',{x:wx(1),y:WP.H-10,'text-anchor':'middle'}).textContent='state A · overturning ON';
+  const yt=el(wellSvg,'text',{x:14,y:(WP.t+WP.H-WP.b)/2,'text-anchor':'middle',
+    transform:`rotate(-90 14 ${(WP.t+WP.H-WP.b)/2})`});
+  yt.textContent='potential U(x)';
+  wellFill=el(wellSvg,'path',{fill:'var(--well-fill)',stroke:'none'});
+  wellCurve=el(wellSvg,'path',{fill:'none',stroke:'var(--cool)','stroke-width':2.5,'stroke-linejoin':'round'});
+  ballEl=el(wellSvg,'circle',{r:9,fill:'var(--warm)',stroke:'var(--surface)','stroke-width':2});
+}
+function renderWell(){
+  let d='';
+  for (let x=WX[0];x<=WX[1]+1e-9;x+=0.02){
+    d+=(d?'L':'M')+wx(x).toFixed(1)+' '+wy(U(x,hVal)).toFixed(1)+' ';
+  }
+  wellCurve.setAttribute('d',d);
+  wellFill.setAttribute('d',d+`L ${wx(WX[1])} ${WP.H-WP.b} L ${wx(WX[0])} ${WP.H-WP.b} Z`);
+  ballEl.setAttribute('cx',wx(ballX));
+  ballEl.setAttribute('cy',wy(U(ballX,hVal))-8);
+  document.getElementById('h-val').textContent=hVal.toFixed(3);
+  document.getElementById('fold-dist').textContent=Math.max(0,HC-Math.abs(hVal)).toFixed(3);
+  const curv=d2U(ballX);
+  document.getElementById('resil').textContent=curv>0?curv.toFixed(2):'0 — tipping';
+  const on=ballX>0;
+  document.getElementById('state-label').textContent=on?'Overturning ON':'Collapsed (OFF)';
+  document.getElementById('state-dot').style.background=on?'var(--cool)':'var(--warm)';
+}
+function settleBall(){
+  if (REDUCED){
+    const eq=equilibria(hVal);
+    if (eq.length){
+      let best=eq[0];
+      for (const e of eq) if (Math.abs(e-ballX)<Math.abs(best-ballX)) best=e;
+      const same=eq.filter(e=>Math.sign(e)===Math.sign(ballX));
+      ballX=same.length?same[0]:best;
+    }
+    renderWell();
+    return;
+  }
+  cancelAnimationFrame(settleBall._raf);
+  (function tick(){
+    let moved=false;
+    for (let i=0;i<6;i++){
+      const f=-dU(ballX,hVal);
+      if (Math.abs(f)>1e-4){ ballX+=f*0.02; moved=true; }
+    }
+    renderWell();
+    if (moved) settleBall._raf=requestAnimationFrame(tick);
+  })();
+}
+hSlider.addEventListener('input',()=>{ hVal=parseFloat(hSlider.value); settleBall(); });
+document.getElementById('well-reset').addEventListener('click',()=>{
+  hVal=0; hSlider.value='0'; ballX=1; settleBall();
+});
+
+/* ================= early-warning panels ================= */
+const WIN=31;
+function rolling(fn){
+  const xs=[],ys=[];
+  for (let i=0;i+WIN<=N;i++){
+    const w=RESID.slice(i,i+WIN);
+    xs.push(YEARS[i+WIN-1]); ys.push(fn(w));
+  }
+  return {xs,ys};
+}
+const variance=w=>{
+  const m=w.reduce((a,b)=>a+b,0)/w.length;
+  return w.reduce((a,b)=>a+(b-m)**2,0)/(w.length-1);
+};
+const ac1=w=>{
+  const m=w.reduce((a,b)=>a+b,0)/w.length;
+  let num=0,den=0;
+  for (let i=0;i<w.length;i++){ den+=(w[i]-m)**2; if (i>0) num+=(w[i]-m)*(w[i-1]-m); }
+  return num/den;
+};
+function kendallTau(ys){
+  let c=0,d=0;
+  for (let i=0;i<ys.length;i++)
+    for (let j=i+1;j<ys.length;j++){
+      const s=(ys[j]-ys[i]);
+      if (s>0) c++; else if (s<0) d++;
+    }
+  return (c-d)/(c+d);
+}
+function drawSmallLine(svgId,boxId,tipId,series,fmt){
+  const svg=document.getElementById(svgId);
+  svg.innerHTML='';
+  const SP={l:52,r:14,t:14,b:32,W:460,H:240};
+  const {xs,ys}=series;
+  const ymin=Math.min(...ys), ymax=Math.max(...ys), pad=(ymax-ymin)*0.12;
+  const y0=ymin-pad, y1=ymax+pad;
+  const sx=v=>SP.l+(v-xs[0])/(xs[xs.length-1]-xs[0])*(SP.W-SP.l-SP.r);
+  const sy=v=>SP.H-SP.b-(v-y0)/(y1-y0)*(SP.H-SP.t-SP.b);
+  for (let yr=1920;yr<=2020;yr+=20){
+    el(svg,'line',{x1:sx(yr),y1:SP.t,x2:sx(yr),y2:SP.H-SP.b,stroke:'var(--grid)','stroke-width':1});
+    el(svg,'text',{x:sx(yr),y:SP.H-SP.b+16,'text-anchor':'middle'}).textContent=yr;
+  }
+  const nt=4;
+  for (let k=0;k<=nt;k++){
+    const v=y0+(y1-y0)*k/nt, Y=sy(v);
+    el(svg,'line',{x1:SP.l,y1:Y,x2:SP.W-SP.r,y2:Y,stroke:'var(--grid)','stroke-width':1});
+    el(svg,'text',{x:SP.l-6,y:Y+4,'text-anchor':'end'}).textContent=fmt(v);
+  }
+  let d='';
+  for (let i=0;i<xs.length;i++) d+=(d?'L':'M')+sx(xs[i]).toFixed(1)+' '+sy(ys[i]).toFixed(1)+' ';
+  el(svg,'path',{d,fill:'none',stroke:'var(--cool)','stroke-width':2,'stroke-linejoin':'round'});
+  el(svg,'circle',{cx:sx(xs[xs.length-1]),cy:sy(ys[ys.length-1]),r:4.5,
+    fill:'var(--cool)',stroke:'var(--surface)','stroke-width':2});
+  const hover=el(svg,'circle',{r:7,fill:'none',stroke:'var(--ink)','stroke-width':1.5,opacity:0});
+  const cross=el(svg,'line',{y1:SP.t,y2:SP.H-SP.b,stroke:'var(--axis)','stroke-width':1,opacity:0});
+  const box=document.getElementById(boxId), tip=document.getElementById(tipId);
+  const overlay=el(svg,'rect',{x:SP.l,y:SP.t,width:SP.W-SP.l-SP.r,height:SP.H-SP.t-SP.b,fill:'transparent'});
+  overlay.addEventListener('pointermove',ev=>{
+    const r=svg.getBoundingClientRect();
+    const mx=(ev.clientX-r.left)*SP.W/r.width;
+    let best=0,bd=1e9;
+    for (let i=0;i<xs.length;i++){ const dd=Math.abs(sx(xs[i])-mx); if (dd<bd){bd=dd;best=i;} }
+    hover.setAttribute('cx',sx(xs[best])); hover.setAttribute('cy',sy(ys[best]));
+    hover.setAttribute('opacity','1');
+    cross.setAttribute('x1',sx(xs[best])); cross.setAttribute('x2',sx(xs[best]));
+    cross.setAttribute('opacity','1');
+    tip.style.display='block';
+    tip.innerHTML=`<span class="yr">${xs[best]}</span><br><span class="num">${fmt(ys[best])}</span>`;
+    const bx=box.getBoundingClientRect();
+    let tx=sx(xs[best])*bx.width/SP.W+12;
+    if (tx>bx.width-100) tx-=120;
+    tip.style.left=tx+'px';
+    tip.style.top=Math.max(0,sy(ys[best])*bx.height/SP.H-40)+'px';
+  });
+  overlay.addEventListener('pointerleave',()=>{
+    hover.setAttribute('opacity','0'); cross.setAttribute('opacity','0'); tip.style.display='none';
+  });
+}
+
+/* ================= table ================= */
+(function fillTable(){
+  const tb=document.querySelector('#data-table tbody');
+  const rows=[];
+  for (let i=0;i<N;i++)
+    rows.push(`<tr><td>${YEARS[i]}</td><td>${ANOM[i].toFixed(2)}</td>`+
+      `<td>${SMOOTH[i].toFixed(3)}</td><td>${RATE[i].toFixed(3)}</td>`+
+      `<td class="src">${ROWS[i].src}${ROWS[i].partial?' (YTD)':''}</td></tr>`);
+  tb.innerHTML=rows.join('');
+})();
+
+/* ================= boot & theme redraws ================= */
+const acSeries=rolling(ac1), varSeries=rolling(variance);
+function drawAll(){
+  drawPhase();
+  drawWellStatic(); renderWell();
+  drawSmallLine('ac1','ac1-box','ac1-tip',acSeries,v=>v.toFixed(2));
+  drawSmallLine('varc','var-box','var-tip',varSeries,v=>v.toFixed(3));
+}
+document.getElementById('ac1-tau').textContent='Kendall τ = '+kendallTau(acSeries.ys).toFixed(2);
+document.getElementById('var-tau').textContent='Kendall τ = '+kendallTau(varSeries.ys).toFixed(2);
+drawAll();
+settleBall();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{ drawAll(); });
+new MutationObserver(()=>{ drawAll(); }).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+</script>
+</body>
+</html>
