@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>Six thermometers, one answer — global temperature datasets compared</title>
+<style>
+  /* same committed dark system as index.html */
+  :root {
+    color-scheme: dark;
+    --page: #070b10;
+    --surface: #0d131a;
+    --ink: #f2f5f8;
+    --ink-2: #b6c1cc;
+    --muted: #7c8894;
+    --grid: #1b242e;
+    --axis: #2e3945;
+    --border: rgba(255,255,255,0.07);
+    --cool: #2b8ff2;
+    --warm: #f4502a;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background:
+      radial-gradient(1100px 520px at 75% -120px, rgba(244,80,42,0.07), transparent 70%),
+      radial-gradient(900px 600px at -10% 30%, rgba(43,143,242,0.05), transparent 70%),
+      var(--page);
+    color: var(--ink);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    line-height: 1.55;
+    margin: 0;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 56px 20px 90px; }
+
+  .eyebrow {
+    font-family: Consolas, "SF Mono", ui-monospace, monospace;
+    font-size: 12.5px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 18px;
+  }
+  h1 {
+    font-family: Charter, "Iowan Old Style", Georgia, "Times New Roman", serif;
+    font-weight: 600; font-size: clamp(32px, 5.5vw, 54px); line-height: 1.08;
+    letter-spacing: -0.015em; margin: 0 0 18px; text-wrap: balance;
+  }
+  h1 em { font-style: italic; color: var(--warm); }
+  .lede { color: var(--ink-2); font-size: 17.5px; max-width: 64ch; margin: 0 0 28px; }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 20px 14px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  }
+  .panel-title {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin: 0 2px 8px;
+  }
+  .panel-title .t { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+  .panel-title .u {
+    font-family: Consolas, ui-monospace, monospace; font-size: 12px; color: var(--muted);
+  }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 2px 2px 10px;
+    font-size: 12.5px; color: var(--ink-2);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend i { width: 14px; height: 4px; border-radius: 2px; display: inline-block; }
+
+  .chart-box { position: relative; }
+  svg { display: block; width: 100%; height: auto; }
+  svg text {
+    font-family: Consolas, "SF Mono", ui-monospace, monospace;
+    font-size: 12px; fill: var(--muted);
+  }
+  svg .endlab { font-family: "Segoe UI", system-ui, sans-serif; font-size: 12.5px; font-weight: 700; }
+
+  .tooltip {
+    position: absolute; pointer-events: none; display: none; z-index: 4;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 11px; box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+    font-size: 12.5px; color: var(--ink-2); white-space: nowrap;
+  }
+  .tooltip .yr { font-weight: 700; color: var(--ink); font-size: 14px; }
+  .tooltip .row { display: flex; align-items: center; gap: 7px; margin-top: 3px; }
+  .tooltip .row i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .tooltip .num { font-family: Consolas, ui-monospace, monospace; color: var(--ink); margin-left: auto; padding-left: 12px; }
+
+  .statline {
+    margin: 10px 2px 4px; font-size: 13px; color: var(--ink-2);
+  }
+  .statline b { color: var(--ink); font-family: Consolas, ui-monospace, monospace; }
+
+  .note { font-size: 13px; color: var(--muted); margin-top: 44px; max-width: 76ch; }
+  details { margin-top: 16px; }
+  summary { cursor: pointer; font-size: 13.5px; color: var(--ink-2); font-weight: 600; }
+  table {
+    border-collapse: collapse; margin-top: 10px; font-size: 12.5px;
+    font-family: Consolas, ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td { padding: 3px 13px 3px 0; text-align: right; color: var(--ink-2); }
+  th { color: var(--ink); border-bottom: 1px solid var(--axis); }
+  .table-scroll { max-height: 320px; overflow: auto; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">six independent datasets · common 1951–80 baseline · live build</p>
+    <h1>Six thermometers, <em>one answer.</em></h1>
+    <p class="lede">
+      Four independent observational groups (NASA, the UK Met Office, NOAA, Berkeley Earth), the
+      Japan Meteorological Agency, and Europe's ERA5 reanalysis all measure Earth's temperature with
+      different stations, different ocean data, and different methods. Put on a common baseline and
+      overlaid, they are nearly a single line — the disagreement between them is a rounding error
+      next to the warming itself.
+    </p>
+
+    <div class="panel">
+      <div class="panel-title">
+        <span class="t">Global mean surface temperature, annual — all six series</span>
+        <span class="u">anomaly (°C) vs the common 1951–80 baseline</span>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="chart-box" id="cmp-box">
+        <svg id="cmp" viewBox="0 0 980 560" role="img"
+             aria-label="Six global temperature datasets, 1850 to present, overlaid on a common 1951 to 1980 baseline. The lines track each other closely along the full record and all rise sharply after 1970."></svg>
+        <div class="tooltip" id="cmp-tip"></div>
+      </div>
+      <p class="statline" id="statline"></p>
+    </div>
+  </header>
+
+  <p class="note" id="data-note">
+    Each series keeps its native methodology and is shifted only by a constant — its own 1951–80
+    mean — so the curves share a zero without any reshaping. Observational datasets (GISTEMP,
+    HadCRUT5, NOAAGlobalTemp, Berkeley Earth, JMA) are annual means of station and ship/buoy
+    measurements; ERA5 is a physics-based reanalysis and its final point is a year-to-date mean,
+    drawn as an open ring. These are the same six series the WMO averages for its official annual
+    global temperature statement. Sources and offsets: <span data-fill="offsets">—</span>.
+    Data build: <span data-fill="generated">—</span>.
+  </p>
+
+  <details>
+    <summary>Data table — annual anomalies, common baseline (°C)</summary>
+    <div class="table-scroll"><table id="data-table">
+      <thead><tr id="table-head"><th>Year</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </details>
+</div>
+
+<script src="data/compare.js"></script>
+<script>
+"use strict";
+const DS = window.VS_COMPARE.datasets;
+const META = window.VS_COMPARE.meta;
+/* fixed slot order — validated 6-slot categorical palette (dark) */
+const COLORS = {
+  gistemp:"#3987e5", hadcrut5:"#199e70", noaa:"#c98500",
+  berkeley:"#008300", era5:"#9085e9", jma:"#e66767"
+};
+const SHORT = {
+  gistemp:"GISTEMP", hadcrut5:"HadCRUT5", noaa:"NOAA",
+  berkeley:"Berkeley", era5:"ERA5", jma:"JMA"
+};
+
+document.querySelectorAll('[data-fill="generated"]').forEach(e=>
+  e.textContent = `${META.generated}, ERA5 through ${META.era5_last_day}`);
+document.querySelectorAll('[data-fill="offsets"]').forEach(e=>
+  e.textContent = META.notes.map(n=>
+    `${SHORT[n.id]} ${n.span} (native ${n.native_baseline}, ${n.offset_removed>=0?'−':'+'}${Math.abs(n.offset_removed).toFixed(2)} °C)`
+  ).join('; '));
+
+/* legend */
+const legend=document.getElementById('legend');
+DS.forEach(d=>{
+  const s=document.createElement('span');
+  s.innerHTML=`<i style="background:${COLORS[d.id]}"></i>${d.label}`;
+  legend.appendChild(s);
+});
+
+/* year -> {id: anom} map for tooltip + table */
+const BYYEAR=new Map();
+DS.forEach(d=>d.years.forEach((y,i)=>{
+  if(!BYYEAR.has(y)) BYYEAR.set(y,{});
+  BYYEAR.get(y)[d.id]=d.anoms[i];
+}));
+const ALLYEARS=[...BYYEAR.keys()].sort((a,b)=>a-b);
+
+const svgNS='http://www.w3.org/2000/svg';
+function el(parent, tag, attrs){
+  const e=document.createElementNS(svgNS,tag);
+  for (const k in attrs) e.setAttribute(k,attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+
+const svg=document.getElementById('cmp');
+const P={l:60,r:120,t:22,b:46,W:980,H:560};
+const X0=ALLYEARS[0], X1=ALLYEARS[ALLYEARS.length-1];
+let ymin=1e9,ymax=-1e9;
+DS.forEach(d=>d.anoms.forEach(v=>{ if(v<ymin)ymin=v; if(v>ymax)ymax=v; }));
+const YD=[ymin-0.08, ymax+0.1];
+const px=y=>P.l+(y-X0)/(X1-X0)*(P.W-P.l-P.r);
+const py=v=>P.H-P.b-(v-YD[0])/(YD[1]-YD[0])*(P.H-P.t-P.b);
+
+function draw(){
+  svg.innerHTML='';
+  const g=el(svg,'g',{});
+  for (let yr=1850;yr<=X1;yr+=25){
+    el(g,'line',{x1:px(yr),y1:P.t,x2:px(yr),y2:P.H-P.b,stroke:'var(--grid)','stroke-width':1});
+    el(g,'text',{x:px(yr),y:P.H-P.b+20,'text-anchor':'middle'}).textContent=yr;
+  }
+  for (let v=Math.ceil(YD[0]/0.25)*0.25; v<=YD[1]+1e-9; v+=0.25){
+    const Y=py(v);
+    el(g,'line',{x1:P.l,y1:Y,x2:P.W-P.r,y2:Y,stroke:'var(--grid)','stroke-width':1});
+    el(g,'text',{x:P.l-8,y:Y+4,'text-anchor':'end'}).textContent=v.toFixed(2).replace('-0.00','0.00');
+  }
+  el(g,'line',{x1:P.l,y1:py(0),x2:P.W-P.r,y2:py(0),stroke:'var(--axis)','stroke-width':1.5});
+
+  // series lines
+  DS.forEach(d=>{
+    let path='';
+    for (let i=0;i<d.years.length;i++)
+      path+=(path?'L':'M')+px(d.years[i]).toFixed(1)+' '+py(d.anoms[i]).toFixed(1)+' ';
+    el(svg,'path',{d:path,fill:'none',stroke:COLORS[d.id],'stroke-width':2.5,
+      'stroke-linejoin':'round',opacity:0.92});
+    const li=d.years.length-1;
+    if (d.partial_last){
+      el(svg,'circle',{cx:px(d.years[li]),cy:py(d.anoms[li]),r:6,
+        fill:'var(--surface)',stroke:COLORS[d.id],'stroke-width':2.5});
+    } else {
+      el(svg,'circle',{cx:px(d.years[li]),cy:py(d.anoms[li]),r:4,
+        fill:COLORS[d.id],stroke:'var(--page)','stroke-width':2});
+    }
+  });
+
+  // direct end labels, nudged apart
+  const ends=DS.map(d=>{
+    const li=d.years.length-1;
+    return {id:d.id, x:px(d.years[li])+12, y:py(d.anoms[li])+4,
+            txt:SHORT[d.id]+(d.partial_last?' (YTD)':'')};
+  }).sort((a,b)=>a.y-b.y);
+  for (let i=1;i<ends.length;i++)
+    if (ends[i].y-ends[i-1].y<16) ends[i].y=ends[i-1].y+16;
+  ends.forEach(e=>{
+    const t=el(svg,'text',{x:e.x,y:e.y,class:'endlab',fill:COLORS[e.id]});
+    t.textContent=e.txt;
+  });
+
+  // hover: crosshair + all-series tooltip
+  const cross=el(svg,'line',{y1:P.t,y2:P.H-P.b,stroke:'var(--axis)','stroke-width':1,opacity:0});
+  const box=document.getElementById('cmp-box'), tip=document.getElementById('cmp-tip');
+  const overlay=el(svg,'rect',{x:P.l,y:P.t,width:P.W-P.l-P.r,height:P.H-P.t-P.b,fill:'transparent'});
+  overlay.addEventListener('pointermove',ev=>{
+    const r=svg.getBoundingClientRect();
+    const mx=(ev.clientX-r.left)*P.W/r.width;
+    const yr=Math.max(X0,Math.min(X1,Math.round(X0+(mx-P.l)/(P.W-P.l-P.r)*(X1-X0))));
+    if (!BYYEAR.has(yr)) return;
+    cross.setAttribute('x1',px(yr)); cross.setAttribute('x2',px(yr));
+    cross.setAttribute('opacity','1');
+    const vals=BYYEAR.get(yr);
+    const rows=Object.entries(vals).sort((a,b)=>b[1]-a[1]).map(([id,v])=>
+      `<div class="row"><i style="background:${COLORS[id]}"></i>${SHORT[id]}<span class="num">${v.toFixed(2)}</span></div>`).join('');
+    const arr=Object.values(vals);
+    const spread=arr.length>1?(Math.max(...arr)-Math.min(...arr)):0;
+    tip.style.display='block';
+    tip.innerHTML=`<span class="yr">${yr}</span>${rows}`+
+      (arr.length>1?`<div class="row" style="margin-top:6px;color:var(--muted)">spread<span class="num">${spread.toFixed(2)}</span></div>`:'');
+    const bx=box.getBoundingClientRect();
+    let tx=px(yr)*bx.width/P.W+14;
+    if (tx>bx.width-170) tx-=190;
+    tip.style.left=tx+'px';
+    tip.style.top='16px';
+  });
+  overlay.addEventListener('pointerleave',()=>{
+    cross.setAttribute('opacity','0'); tip.style.display='none';
+  });
+}
+draw();
+
+/* agreement stat: mean yearly spread, 2000 through last complete year */
+(function(){
+  const spreads=[];
+  for (const y of ALLYEARS){
+    if (y<2000) continue;
+    const vals=Object.entries(BYYEAR.get(y)).filter(([id])=>id!=='era5'||y<2026).map(([,v])=>v);
+    if (vals.length>=5) spreads.push(Math.max(...vals)-Math.min(...vals));
+  }
+  const mean=spreads.reduce((a,b)=>a+b,0)/spreads.length;
+  document.getElementById('statline').innerHTML=
+    `Since 2000, the six datasets disagree by an average of <b>${mean.toFixed(2)} °C</b> in any given year — `+
+    `while the signal they all measure has climbed past <b>+1.2 °C</b>.`;
+})();
+
+/* table */
+(function(){
+  const head=document.getElementById('table-head');
+  DS.forEach(d=>{
+    const th=document.createElement('th'); th.textContent=SHORT[d.id]; head.appendChild(th);
+  });
+  const tb=document.querySelector('#data-table tbody');
+  const rows=[];
+  for (const y of ALLYEARS){
+    const vals=BYYEAR.get(y);
+    rows.push(`<tr><td>${y}</td>`+DS.map(d=>
+      `<td>${vals[d.id]!==undefined?vals[d.id].toFixed(2):''}</td>`).join('')+'</tr>');
+  }
+  tb.innerHTML=rows.join('');
+})();
+</script>
+</body>
+</html>
