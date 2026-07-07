@@ -222,11 +222,11 @@ for fi, f in enumerate(frames):
     dr.ellipse([hx - 5, hy - 6, hx + 2, hy + 1],
                fill=tuple(min(255, ch + 70) for ch in pc))
 
-    # HUD
-    dr.text((28, H - 122), str(yr), font=F_YEAR, fill=(242, 245, 248, 245))
+    # HUD (kept clear of the x-axis tick row)
+    dr.text((28, H - 140), str(yr), font=F_YEAR, fill=(242, 245, 248, 245))
     stat = (f"{s['x']:+.2f} °C · {s['v']:+.2f} °C/dec" +
             (f" · ±{s['spread']/2:.2f} °C across {s['n']} datasets" if s["n"] > 1 else ""))
-    dr.text((30, H - 50), stat, font=F_STAT, fill=(182, 193, 204, 230))
+    dr.text((30, H - 70), stat, font=F_STAT, fill=(182, 193, 204, 230))
     # leaderboard
     if yr != last_board_year:
         last_board_year = yr
