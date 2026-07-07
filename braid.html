@@ -144,8 +144,11 @@
     is smoothed with a Gaussian kernel (σ ≈ 4 yr) inside its own span; the rate is the centered
     derivative of the smoothed series. The translucent tube is drawn through the per-year envelope
     of all datasets covering that year — its width is the real, honest disagreement between
-    independent measurement systems. Built by scripts/build_compare.py; ensemble means and spreads
-    for every year are in the comparison page's data table. Generated <span id="gen">—</span>.
+    independent measurement systems. The strands do not all start together — each begins when its
+    instrument record does (open ring, year noted): <span id="spans">—</span>. ERA5 starts in 1940
+    because a reanalysis needs enough upper-air observations to constrain its model; the braid
+    thickens as more cameras come online. Built by scripts/build_compare.py; ensemble means and
+    spreads for every year are in the comparison page's data table. Generated <span id="gen">—</span>.
   </p>
 </div>
 
@@ -216,7 +219,7 @@ const STATS=ALLY.map(y=>{
 const legend=document.getElementById('legend');
 DS.forEach(d=>{
   const s=document.createElement('span');
-  s.innerHTML=`<i style="background:${COLORS[d.id]}"></i>${SHORT[d.id]}`;
+  s.innerHTML=`<i style="background:${COLORS[d.id]}"></i>${SHORT[d.id]} · ${d.years[0]}–${d.years[d.years.length-1]}`;
   legend.appendChild(s);
 });
 
@@ -268,6 +271,28 @@ TRACKS.forEach(t=>{
   for (let i=0;i<t.S.length;i++) d+=(d?'L':'M')+px(t.S[i]).toFixed(1)+' '+py(t.R[i]).toFixed(1)+' ';
   el(ghosts,'path',{d,stroke:COLORS[t.id],'stroke-width':1.6,opacity:0.5});
 });
+
+/* start-of-record markers: each strand begins when its instrument does */
+const starts=el(svg,'g',{});
+TRACKS.forEach(t=>{
+  el(starts,'circle',{cx:px(t.S[0]),cy:py(t.R[0]),r:4,
+    fill:'var(--page)',stroke:COLORS[t.id],'stroke-width':2});
+});
+const byStart={};
+TRACKS.forEach(t=>{ (byStart[t.years[0]]=byStart[t.years[0]]||[]).push(t); });
+const slabs=Object.entries(byStart).map(([y,ts])=>({
+  y:+y,
+  lx:ts.reduce((a,t)=>a+px(t.S[0]),0)/ts.length,
+  ly:ts.reduce((a,t)=>a+py(t.R[0]),0)/ts.length
+})).sort((a,b)=>a.ly-b.ly);
+for (let i=1;i<slabs.length;i++)
+  if (slabs[i].ly-slabs[i-1].ly<15) slabs[i].ly=slabs[i-1].ly+15;
+slabs.forEach(s=>{
+  el(starts,'text',{x:s.lx-10,y:s.ly-9,'text-anchor':'end'}).textContent=s.y;
+});
+document.getElementById('spans').textContent =
+  Object.keys(byStart).sort((a,b)=>a-b)
+    .map(y=>`${y} — ${byStart[y].map(t=>SHORT[t.id]).join(', ')}`).join('; ');
 
 /* annotations */
 const a1=el(svg,'text',{x:px(-0.18),y:py(YDm[0]+0.045),class:'annot','text-anchor':'middle'});
