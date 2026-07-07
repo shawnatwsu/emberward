@@ -256,12 +256,15 @@ el(svg,'text',{x:(P.l+P.W-P.r)/2,y:P.H-8,'text-anchor':'middle'}).textContent='t
 el(svg,'text',{x:16,y:(P.t+P.H-P.b)/2,'text-anchor':'middle',
   transform:`rotate(-90 16 ${(P.t+P.H-P.b)/2})`}).textContent='warming rate (°C / decade)';
 
-/* agreement tube: translucent per-year envelope discs */
-const tube=el(svg,'g',{});
+/* agreement tube: per-year envelope discs. Solid fills inside a group with
+   one opacity, so overlaps union instead of stacking into clouds. */
+const tube=el(svg,'g',{opacity:0.09});
 STATS.forEach(s=>{
   if (s.n<2) return;
-  el(tube,'circle',{cx:px(s.mx),cy:py(s.mv),r:Math.max(6,s.rad/(XD[1]-XD[0])*(P.W-P.l-P.r)),
-    fill:'rgba(43,143,242,0.045)'});
+  const sx=(Math.max(...s.pts.map(p=>px(p.x)))-Math.min(...s.pts.map(p=>px(p.x))))/2;
+  const sy=(Math.max(...s.pts.map(p=>py(p.v)))-Math.min(...s.pts.map(p=>py(p.v))))/2;
+  const r=Math.min(28,Math.max(5,Math.max(sx,sy)+4));
+  el(tube,'circle',{cx:px(s.mx),cy:py(s.mv),r:r,fill:'#2b8ff2'});
 });
 
 /* ghost braid: full history, thin, per dataset */
@@ -319,15 +322,17 @@ scrub.value=scrub.max;
 function render(idx){
   const year=ALLY[idx];
   TRACKS.forEach(t=>{
-    const i=year-t.y0;
-    if (i<0||i>=t.S.length){
+    const rel=year-t.y0;
+    if (rel<0){
       trails[t.id].setAttribute('d','');
       heads[t.id].setAttribute('opacity','0');
       headGlows[t.id].setAttribute('opacity','0');
       return;
     }
-    heads[t.id].setAttribute('opacity','1');
-    headGlows[t.id].setAttribute('opacity','0.5');
+    // records that have ended stay frozen at their last year instead of vanishing
+    const i=Math.min(rel,t.S.length-1), ended=rel>t.S.length-1;
+    heads[t.id].setAttribute('opacity',ended?'0.4':'1');
+    headGlows[t.id].setAttribute('opacity',ended?'0':'0.5');
     heads[t.id].setAttribute('cx',px(t.S[i])); heads[t.id].setAttribute('cy',py(t.R[i]));
     headGlows[t.id].setAttribute('cx',px(t.S[i])); headGlows[t.id].setAttribute('cy',py(t.R[i]));
     let d='';
@@ -339,7 +344,8 @@ function render(idx){
   document.getElementById('ro-year').textContent=year;
   document.getElementById('ro-mean').textContent=(s.mx>=0?'+':'')+s.mx.toFixed(2)+' °C';
   document.getElementById('ro-rate').textContent=(s.mv>=0?'+':'')+s.mv.toFixed(2)+' °C/dec';
-  document.getElementById('ro-spread').textContent=s.spread.toFixed(2)+' °C ('+s.n+' datasets)';
+  document.getElementById('ro-spread').textContent=
+    s.n>1 ? s.spread.toFixed(2)+' °C across '+s.n+' datasets' : '— (only ERA5 covers '+year+')';
 }
 
 let playing=false, raf=null, frame=0;
