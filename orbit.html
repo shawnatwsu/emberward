@@ -86,6 +86,15 @@
     display: inline-flex; gap: 7px; align-items: center;
     font-size: 13px; color: var(--ink-2); cursor: pointer; user-select: none;
   }
+  .sources { display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 12px 2px 0; }
+  .sources label {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12.5px; color: var(--muted); cursor: pointer; user-select: none;
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 13px;
+  }
+  .sources label:has(input:checked) { color: var(--ink); border-color: var(--muted); }
+  .sources input { accent-color: var(--cool); }
+  .sources i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
   .note { font-size: 13px; color: var(--muted); margin-top: 42px; max-width: 76ch; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -118,11 +127,14 @@
       <input type="range" id="scrub" min="0" max="1750" step="1" value="0" aria-label="Timeline">
       <label class="toggle"><input type="checkbox" id="axes" checked> axes</label>
     </div>
+    <div class="sources" id="sources" role="group" aria-label="Datasets included in the planet's position"></div>
   </header>
 
   <p class="note">
-    An honest chart wearing a costume. The planet's position is the ensemble mean of NASA GISTEMP,
-    HadCRUT5, NOAAGlobalTemp, Berkeley Earth, ERA5 and JMA (common 1951–80 baseline, Gaussian-smoothed
+    An honest chart wearing a costume. The planet's position is the ensemble mean of whichever
+    datasets are checked below the controls — all six by default (NASA GISTEMP, HadCRUT5,
+    NOAAGlobalTemp, Berkeley Earth, ERA5, JMA); uncheck down to one to fly a single instrument's
+    record, or add them back one by one and watch the path barely move (common 1951–80 baseline, Gaussian-smoothed
     σ ≈ 4 yr): horizontal — temperature anomaly; vertical — warming rate. The halo around the planet
     is the live disagreement between the six datasets. The "sun" marks the mean 1880–1969 state and
     its faint rings the orbit-era envelope; the planet's color runs blue → ember with the anomaly
@@ -156,32 +168,56 @@ function gaussianSmooth(arr, sigma){
   }
   return out;
 }
+const COLORS = {
+  gistemp:"#3987e5", hadcrut5:"#199e70", noaa:"#c98500",
+  berkeley:"#008300", era5:"#9085e9", jma:"#e66767"
+};
+const SHORT = {
+  gistemp:"GISTEMP", hadcrut5:"HadCRUT5", noaa:"NOAA",
+  berkeley:"Berkeley", era5:"ERA5", jma:"JMA"
+};
 const TRACKS = DS.map(d=>{
   const S=gaussianSmooth(d.anoms,4), n=S.length;
   const R=S.map((_,i)=>{
     const a=S[Math.max(0,i-1)], b=S[Math.min(n-1,i+1)];
     return (b-a)/(Math.min(n-1,i+1)-Math.max(0,i-1))*10;
   });
-  return {y0:d.years[0], S, R};
+  return {id:d.id, y0:d.years[0], S, R};
 });
-const Y0=Math.min(...TRACKS.map(t=>t.y0));
-const Y1=Math.max(...TRACKS.map(t=>t.y0+t.S.length-1));
-const ENS=[];   // per year: {x anomaly, v rate, spread, n}
-for (let y=Y0;y<=Y1;y++){
-  const pts=[];
-  TRACKS.forEach(t=>{
-    const i=y-t.y0;
-    if (i>=0&&i<t.S.length) pts.push({x:t.S[i],v:t.R[i]});
-  });
-  const mx=pts.reduce((a,p)=>a+p.x,0)/pts.length;
-  const mv=pts.reduce((a,p)=>a+p.v,0)/pts.length;
-  const spread=pts.length>1?Math.max(...pts.map(p=>p.x))-Math.min(...pts.map(p=>p.x)):0;
-  ENS.push({y, x:mx, v:mv, spread, n:pts.length});
+function buildEns(ids){
+  const tr=TRACKS.filter(t=>ids.includes(t.id));
+  const y0=Math.min(...tr.map(t=>t.y0));
+  const y1=Math.max(...tr.map(t=>t.y0+t.S.length-1));
+  const out=[];
+  for (let y=y0;y<=y1;y++){
+    const pts=[];
+    tr.forEach(t=>{
+      const i=y-t.y0;
+      if (i>=0&&i<t.S.length) pts.push({x:t.S[i],v:t.R[i]});
+    });
+    if (!pts.length) continue;
+    const mx=pts.reduce((a,p)=>a+p.x,0)/pts.length;
+    const mv=pts.reduce((a,p)=>a+p.v,0)/pts.length;
+    const spread=pts.length>1?Math.max(...pts.map(p=>p.x))-Math.min(...pts.map(p=>p.x)):0;
+    out.push({y, x:mx, v:mv, spread, n:pts.length});
+  }
+  return out;
 }
-const NY=ENS.length;
+const ALL_IDS=TRACKS.map(t=>t.id);
+const FULL=buildEns(ALL_IDS);      // fixed reference: sun, rings, scales
+let ENS=FULL.slice(), NY=ENS.length;
 
-/* sun = mean state 1880-1969; rings sized to orbit-era envelope */
-const orbitEra=ENS.filter(e=>e.y>=1880&&e.y<1970);
+/* dataset picker chips */
+const srcBox=document.getElementById('sources');
+DS.forEach(d=>{
+  const l=document.createElement('label');
+  l.innerHTML=`<input type="checkbox" checked data-id="${d.id}">`+
+    `<i style="background:${COLORS[d.id]}"></i>${SHORT[d.id]} · ${d.years[0]}–${d.years[d.years.length-1]}`;
+  srcBox.appendChild(l);
+});
+
+/* sun = mean state 1880-1969 across all six (fixed reference, whatever is selected) */
+const orbitEra=FULL.filter(e=>e.y>=1880&&e.y<1970);
 const SUN={
   x:orbitEra.reduce((a,e)=>a+e.x,0)/orbitEra.length,
   v:orbitEra.reduce((a,e)=>a+e.v,0)/orbitEra.length
@@ -192,8 +228,8 @@ const RING1=Math.max(...orbitEra.map(e=>Math.hypot(e.x-SUN.x,(e.v-SUN.v)*2.2)));
 const cv=document.getElementById('stage'), ctx=cv.getContext('2d');
 const W=1280,H=720;
 let xmin=1e9,xmax=-1e9,vmin=1e9,vmax=-1e9;
-ENS.forEach(e=>{ xmin=Math.min(xmin,e.x); xmax=Math.max(xmax,e.x);
-                 vmin=Math.min(vmin,e.v); vmax=Math.max(vmax,e.v); });
+TRACKS.forEach(t=>{ xmin=Math.min(xmin,...t.S); xmax=Math.max(xmax,...t.S);
+                    vmin=Math.min(vmin,...t.R); vmax=Math.max(vmax,...t.R); });
 const MX=110,MY=80;
 const px=x=>MX+(x-(xmin-0.12))/((xmax+0.22)-(xmin-0.12))*(W-2*MX);
 const py=v=>H-MY-(v-(vmin-0.05))/((vmax+0.08)-(vmin-0.05))*(H-2*MY);
@@ -253,9 +289,9 @@ function draw(fy){
 
   /* axes (honesty layer) */
   if (axesOn){
-    ctx.strokeStyle='rgba(120,140,160,0.14)'; ctx.lineWidth=1;
-    ctx.fillStyle='rgba(124,136,148,0.75)';
-    ctx.font='12px Consolas, monospace'; ctx.textAlign='center';
+    ctx.strokeStyle='rgba(150,175,205,0.26)'; ctx.lineWidth=1.2;
+    ctx.fillStyle='rgba(195,210,225,0.95)';
+    ctx.font='13px Consolas, monospace'; ctx.textAlign='center';
     for (let x=Math.ceil((xmin-0.12)/0.25)*0.25; x<=xmax+0.22; x+=0.25){
       ctx.beginPath(); ctx.moveTo(px(x),MY*0.6); ctx.lineTo(px(x),H-MY*0.6); ctx.stroke();
       ctx.fillText(x.toFixed(2).replace('-0.00','0.00'), px(x), H-MY*0.6+18);
@@ -293,7 +329,24 @@ function draw(fy){
     ctx.stroke();
   });
   ctx.setLineDash([]);
+  /* sun annotation */
+  ctx.strokeStyle='rgba(255,215,160,0.35)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(sx+24,sy+24); ctx.lineTo(sx+52,sy+52); ctx.stroke();
+  ctx.textAlign='left'; ctx.font='12.5px Consolas, monospace';
+  ctx.fillStyle='rgba(255,220,170,0.85)';
+  ctx.fillText('the "sun" = the stable climate state', sx+58, sy+56);
+  ctx.fillStyle='rgba(255,220,170,0.55)';
+  ctx.fillText('mean of 1880–1969, all six datasets', sx+58, sy+72);
   ctx.globalCompositeOperation='lighter';
+
+  /* remnant: the full path already travelled stays faintly visible */
+  for (let k=1;k<=Math.floor(fy);k++){
+    const a=ENS[k], b=ENS[k-1];
+    const [rr,gg,bb]=planetColor(a.x);
+    ctx.strokeStyle=`rgba(${rr},${gg},${bb},0.16)`;
+    ctx.lineWidth=1.6; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(px(b.x),py(b.v)); ctx.lineTo(px(a.x),py(a.v)); ctx.stroke();
+  }
 
   /* comet tail: past ~50 years, tapered and fading */
   const TAIL=50;
@@ -378,6 +431,19 @@ document.getElementById('restart').addEventListener('click',()=>{
 });
 scrub.addEventListener('input',()=>{ stop('Play'); fy=parseInt(scrub.value,10)/10; draw(fy); });
 document.getElementById('axes').addEventListener('change',e=>{ axesOn=e.target.checked; if(!playing) draw(fy); });
+
+/* dataset picker: the planet becomes the mean of whatever is checked */
+const srcChecks=[...document.querySelectorAll('.sources input')];
+srcChecks.forEach(c=>c.addEventListener('change',()=>{
+  const ids=srcChecks.filter(x=>x.checked).map(x=>x.dataset.id);
+  if (!ids.length){ c.checked=true; return; }   // always at least one camera
+  const curYear=ENS[Math.max(0,Math.min(NY-1,Math.floor(fy)))].y;
+  ENS=buildEns(ids); NY=ENS.length;
+  scrub.max=String((NY-1)*10);
+  fy=Math.max(0,Math.min(NY-1,curYear-ENS[0].y));
+  scrub.value=String(Math.round(fy*10));
+  draw(fy);
+}));
 
 /* ambient redraw so stars twinkle while paused (skipped for reduced motion) */
 if (!REDUCED) setInterval(()=>{ if (!playing) draw(fy); }, 90);
