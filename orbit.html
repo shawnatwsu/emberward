@@ -139,6 +139,7 @@
     <div class="controls">
       <button class="btn" id="play" type="button">Play</button>
       <button class="btn ghost" id="restart" type="button">Restart</button>
+      <button class="btn ghost" id="export" type="button">Export video</button>
       <input type="range" id="scrub" min="0" max="1750" step="1" value="0" aria-label="Timeline">
       <label class="toggle"><input type="checkbox" id="axes" checked> axes</label>
       <label class="toggle"><input type="checkbox" id="score" checked> score</label>
@@ -427,7 +428,7 @@ function draw(fy){
   const yrNow=Math.floor(s.y);
   if (yrNow!==lastBoardYear){
     lastBoardYear=yrNow;
-    const top=ENS.filter(e=>e.y<=yrNow).slice().sort((a,b)=>b.raw-a.raw).slice(0,5);
+    const top=boardTop=ENS.filter(e=>e.y<=yrNow).slice().sort((a,b)=>b.raw-a.raw).slice(0,5);
     document.getElementById('board').innerHTML=
       '<div class="bt">hottest years so far</div>'+
       top.map((e,i)=>`<div class="r${e.y===yrNow?' new':''}"><span>${i+1}.</span>`+
@@ -447,6 +448,33 @@ function draw(fy){
   CAPTIONS.forEach(c=>{ const d=Math.abs(s.y-c[0]); if (d<5&&(!best||d<best.d)) best={d,t:c[1]}; });
   if (best){ cap.textContent=best.t; cap.style.opacity=String(Math.max(0,1-best.d/5)); }
   else cap.style.opacity='0';
+
+  /* while exporting, the HTML overlays must be painted into the canvas itself */
+  if (recording){
+    ctx.textAlign='left';
+    ctx.shadowColor='rgba(43,143,242,0.5)'; ctx.shadowBlur=18;
+    ctx.font='700 62px Consolas, monospace'; ctx.fillStyle='rgba(242,245,248,0.96)';
+    ctx.fillText(String(yrNow), 28, H-58);
+    ctx.shadowBlur=0;
+    ctx.font='13px Consolas, monospace'; ctx.fillStyle='rgba(182,193,204,0.9)';
+    ctx.fillText(
+      `${s.x>=0?'+':''}${s.x.toFixed(2)} °C · ${s.v>=0?'+':''}${s.v.toFixed(2)} °C/dec`+
+      (s.n>1?` · ±${(s.spread/2).toFixed(2)} °C across ${s.n} datasets`:''), 30, H-32);
+    ctx.font='11px Consolas, monospace'; ctx.fillStyle='rgba(124,136,148,0.9)';
+    ctx.fillText('H O T T E S T   Y E A R S   S O   F A R', 92, 34);
+    ctx.font='13px Consolas, monospace';
+    boardTop.forEach((e,i)=>{
+      ctx.fillStyle=e.y===yrNow?'#f4502a':'rgba(242,245,248,0.92)';
+      ctx.fillText(`${i+1}. ${e.y}${e.partial?'*':''}  ${e.raw>=0?'+':''}${e.raw.toFixed(2)} °C`, 92, 55+i*19);
+    });
+    if (best){
+      ctx.globalAlpha=Math.max(0,1-best.d/5);
+      ctx.textAlign='right';
+      ctx.font='italic 21px Georgia, serif'; ctx.fillStyle='rgba(242,245,248,0.95)';
+      ctx.fillText(best.t, W-28, 42);
+      ctx.globalAlpha=1;
+    }
+  }
 }
 
 /* ---------- score: original ambient piece in the spirit of Interstellar,
@@ -527,6 +555,7 @@ document.getElementById('score').addEventListener('change',()=>{
 const scrub=document.getElementById('scrub');
 scrub.max=String((NY-1)*10);
 let fy=REDUCED?NY-1:0, playing=false, lastT=null, raf=null, lastBoardYear=-1;
+let boardTop=[], recording=false, recorder=null, recChunks=[], audioDest=null;
 function speed(year){ return year<1968?6:2.1; } // years per second: cruise, then slow for the escape
 function frame(t){
   if (!playing) return;
@@ -544,6 +573,7 @@ function stop(label){
   playing=false; playBtn.textContent=label||'Play'; lastT=null;
   if (raf) cancelAnimationFrame(raf);
   audioPause(label==='Replay');   // long fade at the end, quick duck on pause
+  if (recording) finishExport();
 }
 playBtn.addEventListener('click',()=>{
   if (playing){ stop('Play'); return; }
@@ -593,6 +623,49 @@ allBtn.addEventListener('click',()=>{
 
 /* ambient redraw so stars twinkle while paused (skipped for reduced motion) */
 if (!REDUCED) setInterval(()=>{ if (!playing) draw(fy); }, 90);
+
+/* ---------- export: record canvas + score straight to a .webm download ---------- */
+const exportBtn=document.getElementById('export');
+function startExport(){
+  if (recording||REDUCED) return;
+  audioInit();
+  if (AC.state==='suspended') AC.resume();
+  if (!audioDest){ audioDest=AC.createMediaStreamDestination(); master.connect(audioDest); }
+  const stream=cv.captureStream(60);
+  if (scoreOn()) audioDest.stream.getAudioTracks().forEach(t=>stream.addTrack(t));
+  const mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+    ? 'video/webm;codecs=vp9,opus' : 'video/webm';
+  recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:8000000});
+  recChunks=[];
+  recorder.ondataavailable=e=>{ if (e.data.size) recChunks.push(e.data); };
+  recorder.onstop=()=>{
+    const blob=new Blob(recChunks,{type:'video/webm'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download='orbitfall.webm'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+  };
+  recording=true;
+  exportBtn.textContent='Recording…'; exportBtn.disabled=true;
+  recorder.start();
+  /* fly the whole run from the top */
+  playing=false; if (raf) cancelAnimationFrame(raf);
+  fy=0; scrub.value='0'; lastBoardYear=-1; draw(0);
+  playing=true; playBtn.textContent='Pause'; audioResume();
+  raf=requestAnimationFrame(frame);
+}
+let finishing=false;
+function finishExport(){
+  if (!recording||finishing) return;
+  finishing=true;
+  /* keep rolling ~2s so the score's fade-out makes the cut; overlays stay drawn */
+  setTimeout(()=>{
+    recorder.stop();
+    recording=false; finishing=false;
+    exportBtn.textContent='Export video'; exportBtn.disabled=false;
+  },2000);
+}
+exportBtn.addEventListener('click',startExport);
+if (REDUCED){ exportBtn.disabled=true; exportBtn.title='Export needs the animation, which is off under reduced motion.'; }
 
 /* no autoplay: browsers only allow audio after a click, so the flight and
    its score begin together on Play */
