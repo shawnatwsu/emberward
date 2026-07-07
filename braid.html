@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>The Braid — six climate datasets escaping orbit together</title>
+<style>
+  /* same committed dark system as index.html */
+  :root {
+    color-scheme: dark;
+    --page: #070b10;
+    --surface: #0d131a;
+    --ink: #f2f5f8;
+    --ink-2: #b6c1cc;
+    --muted: #7c8894;
+    --grid: #1b242e;
+    --axis: #2e3945;
+    --border: rgba(255,255,255,0.07);
+    --cool: #2b8ff2;
+    --warm: #f4502a;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background:
+      radial-gradient(1100px 520px at 75% -120px, rgba(244,80,42,0.07), transparent 70%),
+      radial-gradient(900px 600px at -10% 30%, rgba(43,143,242,0.05), transparent 70%),
+      var(--page);
+    color: var(--ink);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    line-height: 1.55;
+    margin: 0;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 56px 20px 90px; }
+
+  .eyebrow {
+    font-family: Consolas, "SF Mono", ui-monospace, monospace;
+    font-size: 12.5px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 18px;
+  }
+  h1 {
+    font-family: Charter, "Iowan Old Style", Georgia, "Times New Roman", serif;
+    font-weight: 600; font-size: clamp(32px, 5.5vw, 54px); line-height: 1.08;
+    letter-spacing: -0.015em; margin: 0 0 18px; text-wrap: balance;
+  }
+  h1 em { font-style: italic; color: var(--warm); }
+  .lede { color: var(--ink-2); font-size: 17.5px; max-width: 64ch; margin: 0 0 28px; }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 20px 14px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  }
+  .panel-title {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin: 0 2px 8px;
+  }
+  .panel-title .t { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+  .panel-title .u {
+    font-family: Consolas, ui-monospace, monospace; font-size: 12px; color: var(--muted);
+  }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 2px 2px 10px;
+    font-size: 12.5px; color: var(--ink-2);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend i { width: 14px; height: 4px; border-radius: 2px; display: inline-block; }
+
+  .chart-box { position: relative; }
+  svg { display: block; width: 100%; height: auto; }
+  svg text {
+    font-family: Consolas, "SF Mono", ui-monospace, monospace;
+    font-size: 12px; fill: var(--muted);
+  }
+  svg .annot { font-family: "Segoe UI", system-ui, sans-serif; font-size: 13.5px; fill: var(--ink-2); }
+
+  .controls {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin: 14px 2px 6px;
+  }
+  .btn {
+    font: 700 14px "Segoe UI", system-ui, sans-serif;
+    color: var(--page); background: var(--warm); border: none;
+    border-radius: 8px; padding: 8px 18px; cursor: pointer; min-width: 92px;
+  }
+  .btn:hover { filter: brightness(1.1); }
+  .btn:focus-visible { outline: 2px solid var(--cool); outline-offset: 2px; }
+  input[type="range"] { accent-color: var(--warm); flex: 1; min-width: 200px; }
+  input[type="range"]:focus-visible { outline: 2px solid var(--cool); outline-offset: 3px; }
+
+  .readout {
+    font-family: Consolas, ui-monospace, monospace; font-size: 13px;
+    color: var(--ink-2); display: flex; gap: 22px; flex-wrap: wrap; margin: 6px 2px 4px;
+  }
+  .readout b { color: var(--ink); font-weight: 700; }
+  .readout .big { font-size: 22px; color: var(--warm); }
+
+  .note { font-size: 13px; color: var(--muted); margin-top: 44px; max-width: 76ch; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">the braid · ensemble state-space · six datasets, one trajectory</p>
+    <h1>Six cameras, filming <em>one escape.</em></h1>
+    <p class="lede">
+      Every climate dataset is a different camera pointed at the same planet. Run all six through
+      state space — position vs. speed of warming — and they braid into a single rope. The rope's
+      <strong>thickness</strong> is the measurement disagreement; its <strong>path</strong> is the
+      climate. Press play and watch six independent measurements orbit together for a century, then
+      leave together. Nobody's instrument is wrong. The orbit is just over.
+    </p>
+
+    <div class="panel">
+      <div class="panel-title">
+        <span class="t">Ensemble phase portrait — all six datasets in state space</span>
+        <span class="u">x: anomaly vs 1951–80 (°C) · y: warming rate (°C / decade)</span>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="chart-box" id="braid-box">
+        <svg id="braid" viewBox="0 0 980 560" role="img"
+             aria-label="Ensemble phase portrait: six global temperature datasets plotted as anomaly versus warming rate, braided tightly together. All six orbit near zero until about 1970, then move together toward higher anomaly and higher warming rate."></svg>
+      </div>
+      <div class="controls">
+        <button class="btn" id="play" type="button">Play</button>
+        <input type="range" id="scrub" min="0" max="1" step="1" value="1" aria-label="Year">
+      </div>
+      <div class="readout">
+        <span class="big" id="ro-year">—</span>
+        <span>ensemble mean <b id="ro-mean">—</b></span>
+        <span>warming rate <b id="ro-rate">—</b></span>
+        <span>dataset spread <b id="ro-spread">—</b></span>
+      </div>
+    </div>
+  </header>
+
+  <p class="note">
+    Same data as the six-dataset comparison: NASA GISTEMP v4, HadCRUT5, NOAAGlobalTemp v6, Berkeley
+    Earth, ERA5 and JMA, each rebaselined to a common 1951–80 zero by a constant offset. Each series
+    is smoothed with a Gaussian kernel (σ ≈ 4 yr) inside its own span; the rate is the centered
+    derivative of the smoothed series. The translucent tube is drawn through the per-year envelope
+    of all datasets covering that year — its width is the real, honest disagreement between
+    independent measurement systems. Built by scripts/build_compare.py; ensemble means and spreads
+    for every year are in the comparison page's data table. Generated <span id="gen">—</span>.
+  </p>
+</div>
+
+<script src="data/compare.js"></script>
+<script>
+"use strict";
+const DS = window.VS_COMPARE.datasets;
+const META = window.VS_COMPARE.meta;
+const COLORS = {
+  gistemp:"#3987e5", hadcrut5:"#199e70", noaa:"#c98500",
+  berkeley:"#008300", era5:"#9085e9", jma:"#e66767"
+};
+const SHORT = {
+  gistemp:"GISTEMP", hadcrut5:"HadCRUT5", noaa:"NOAA",
+  berkeley:"Berkeley", era5:"ERA5", jma:"JMA"
+};
+document.getElementById('gen').textContent =
+  `${META.generated}, ERA5 through ${META.era5_last_day}`;
+
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const svgNS='http://www.w3.org/2000/svg';
+function el(parent, tag, attrs){
+  const e=document.createElementNS(svgNS,tag);
+  for (const k in attrs) e.setAttribute(k,attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function gaussianSmooth(arr, sigma){
+  const out=new Array(arr.length), half=Math.ceil(sigma*3);
+  for (let i=0;i<arr.length;i++){
+    let s=0,w=0;
+    for (let k=-half;k<=half;k++){
+      const j=i+k;
+      if (j<0||j>=arr.length) continue;
+      const g=Math.exp(-(k*k)/(2*sigma*sigma));
+      s+=arr[j]*g; w+=g;
+    }
+    out[i]=s/w;
+  }
+  return out;
+}
+
+/* per-dataset smoothed state-space tracks */
+const TRACKS = DS.map(d=>{
+  const S=gaussianSmooth(d.anoms,4), n=S.length;
+  const R=S.map((_,i)=>{
+    const a=S[Math.max(0,i-1)], b=S[Math.min(n-1,i+1)];
+    return (b-a)/(Math.min(n-1,i+1)-Math.max(0,i-1))*10;
+  });
+  return {id:d.id, y0:d.years[0], years:d.years, S, R};
+});
+const Y0=Math.min(...TRACKS.map(t=>t.years[0]));
+const Y1=Math.max(...TRACKS.map(t=>t.years[t.years.length-1]));
+const ALLY=[]; for (let y=Y0;y<=Y1;y++) ALLY.push(y);
+
+/* per-year ensemble stats */
+function atYear(t,y){ const i=y-t.y0; return (i>=0&&i<t.S.length)?{x:t.S[i],v:t.R[i]}:null; }
+const STATS=ALLY.map(y=>{
+  const pts=TRACKS.map(t=>atYear(t,y)).filter(Boolean);
+  const mx=pts.reduce((a,p)=>a+p.x,0)/pts.length;
+  const mv=pts.reduce((a,p)=>a+p.v,0)/pts.length;
+  const spread=pts.length>1?Math.max(...pts.map(p=>p.x))-Math.min(...pts.map(p=>p.x)):0;
+  const rad=Math.max(...pts.map(p=>Math.hypot(p.x-mx,(p.v-mv)*2)),0); // rate weighted for tube
+  return {y,pts,mx,mv,spread,rad,n:pts.length};
+});
+
+/* legend */
+const legend=document.getElementById('legend');
+DS.forEach(d=>{
+  const s=document.createElement('span');
+  s.innerHTML=`<i style="background:${COLORS[d.id]}"></i>${SHORT[d.id]}`;
+  legend.appendChild(s);
+});
+
+/* scales */
+const svg=document.getElementById('braid');
+const P={l:70,r:40,t:26,b:50,W:980,H:560};
+let xmin=1e9,xmax=-1e9,vmin=1e9,vmax=-1e9;
+TRACKS.forEach(t=>{
+  xmin=Math.min(xmin,...t.S); xmax=Math.max(xmax,...t.S);
+  vmin=Math.min(vmin,...t.R); vmax=Math.max(vmax,...t.R);
+});
+const XD=[xmin-0.14,xmax+0.22], YDm=[vmin-0.06,vmax+0.09];
+const px=v=>P.l+(v-XD[0])/(XD[1]-XD[0])*(P.W-P.l-P.r);
+const py=v=>P.H-P.b-(v-YDm[0])/(YDm[1]-YDm[0])*(P.H-P.t-P.b);
+
+/* static layers */
+svg.innerHTML='';
+const defs=el(svg,'defs',{});
+const f=el(defs,'filter',{id:'bglow',x:'-60%',y:'-60%',width:'220%',height:'220%'});
+el(f,'feGaussianBlur',{stdDeviation:4});
+
+const grid=el(svg,'g',{});
+for (let x=Math.ceil(XD[0]/0.2)*0.2;x<=XD[1]+1e-9;x+=0.2){
+  el(grid,'line',{x1:px(x),y1:P.t,x2:px(x),y2:P.H-P.b,stroke:'var(--grid)','stroke-width':1});
+  el(grid,'text',{x:px(x),y:P.H-P.b+20,'text-anchor':'middle'}).textContent=(Math.abs(x)<1e-9?'0.0':x.toFixed(1));
+}
+for (let y=Math.ceil(YDm[0]/0.1)*0.1;y<=YDm[1]+1e-9;y+=0.1){
+  el(grid,'line',{x1:P.l,y1:py(y),x2:P.W-P.r,y2:py(y),stroke:'var(--grid)','stroke-width':1});
+  el(grid,'text',{x:P.l-9,y:py(y)+4,'text-anchor':'end'}).textContent=(Math.abs(y)<1e-9?'0.0':y.toFixed(1));
+}
+el(grid,'line',{x1:px(0),y1:P.t,x2:px(0),y2:P.H-P.b,stroke:'var(--axis)','stroke-width':1});
+el(grid,'line',{x1:P.l,y1:py(0),x2:P.W-P.r,y2:py(0),stroke:'var(--axis)','stroke-width':1});
+el(svg,'text',{x:(P.l+P.W-P.r)/2,y:P.H-8,'text-anchor':'middle'}).textContent='temperature anomaly (°C vs 1951–80)';
+el(svg,'text',{x:16,y:(P.t+P.H-P.b)/2,'text-anchor':'middle',
+  transform:`rotate(-90 16 ${(P.t+P.H-P.b)/2})`}).textContent='warming rate (°C / decade)';
+
+/* agreement tube: translucent per-year envelope discs */
+const tube=el(svg,'g',{});
+STATS.forEach(s=>{
+  if (s.n<2) return;
+  el(tube,'circle',{cx:px(s.mx),cy:py(s.mv),r:Math.max(6,s.rad/(XD[1]-XD[0])*(P.W-P.l-P.r)),
+    fill:'rgba(43,143,242,0.045)'});
+});
+
+/* ghost braid: full history, thin, per dataset */
+const ghosts=el(svg,'g',{fill:'none','stroke-linecap':'round'});
+TRACKS.forEach(t=>{
+  let d='';
+  for (let i=0;i<t.S.length;i++) d+=(d?'L':'M')+px(t.S[i]).toFixed(1)+' '+py(t.R[i]).toFixed(1)+' ';
+  el(ghosts,'path',{d,stroke:COLORS[t.id],'stroke-width':1.6,opacity:0.5});
+});
+
+/* annotations */
+const a1=el(svg,'text',{x:px(-0.18),y:py(YDm[0]+0.045),class:'annot','text-anchor':'middle'});
+a1.textContent='a century of braided orbit';
+const a2=el(svg,'text',{x:px(XD[0]+(XD[1]-XD[0])*0.62),y:py(YDm[1]-0.03),class:'annot','text-anchor':'middle'});
+a2.textContent='the braid leaves — all six cameras agree';
+
+/* dynamic layers: comet trails + heads */
+const trailsG=el(svg,'g',{fill:'none','stroke-linecap':'round'});
+const headsGlow=el(svg,'g',{filter:'url(#bglow)'});
+const headsG=el(svg,'g',{});
+const TRAIL=28;
+const trails={}, heads={}, headGlows={};
+TRACKS.forEach(t=>{
+  trails[t.id]=el(trailsG,'path',{stroke:COLORS[t.id],'stroke-width':3,fill:'none',opacity:0.95});
+  headGlows[t.id]=el(headsGlow,'circle',{r:9,fill:COLORS[t.id],opacity:0.5});
+  heads[t.id]=el(headsG,'circle',{r:5.5,fill:COLORS[t.id],stroke:'var(--page)','stroke-width':2});
+});
+
+const scrub=document.getElementById('scrub');
+scrub.max=String(ALLY.length-1);
+scrub.value=scrub.max;
+
+function render(idx){
+  const year=ALLY[idx];
+  TRACKS.forEach(t=>{
+    const i=year-t.y0;
+    if (i<0||i>=t.S.length){
+      trails[t.id].setAttribute('d','');
+      heads[t.id].setAttribute('opacity','0');
+      headGlows[t.id].setAttribute('opacity','0');
+      return;
+    }
+    heads[t.id].setAttribute('opacity','1');
+    headGlows[t.id].setAttribute('opacity','0.5');
+    heads[t.id].setAttribute('cx',px(t.S[i])); heads[t.id].setAttribute('cy',py(t.R[i]));
+    headGlows[t.id].setAttribute('cx',px(t.S[i])); headGlows[t.id].setAttribute('cy',py(t.R[i]));
+    let d='';
+    for (let k=Math.max(0,i-TRAIL);k<=i;k++)
+      d+=(d?'L':'M')+px(t.S[k]).toFixed(1)+' '+py(t.R[k]).toFixed(1)+' ';
+    trails[t.id].setAttribute('d',d);
+  });
+  const s=STATS[idx];
+  document.getElementById('ro-year').textContent=year;
+  document.getElementById('ro-mean').textContent=(s.mx>=0?'+':'')+s.mx.toFixed(2)+' °C';
+  document.getElementById('ro-rate').textContent=(s.mv>=0?'+':'')+s.mv.toFixed(2)+' °C/dec';
+  document.getElementById('ro-spread').textContent=s.spread.toFixed(2)+' °C ('+s.n+' datasets)';
+}
+
+let playing=false, raf=null, frame=0;
+const SPEED=5; // frames per year step
+const playBtn=document.getElementById('play');
+function stop(){
+  playing=false; playBtn.textContent='Replay';
+  if (raf) cancelAnimationFrame(raf);
+}
+function tick(){
+  if (!playing) return;
+  frame++;
+  if (frame%SPEED===0){
+    let idx=parseInt(scrub.value,10)+1;
+    if (idx>=ALLY.length){ stop(); return; }
+    scrub.value=String(idx);
+    render(idx);
+  }
+  raf=requestAnimationFrame(tick);
+}
+playBtn.addEventListener('click',()=>{
+  if (playing){ stop(); playBtn.textContent='Play'; return; }
+  if (parseInt(scrub.value,10)>=ALLY.length-1) scrub.value='0';
+  playing=true; playBtn.textContent='Pause'; frame=0;
+  if (REDUCED){ scrub.value=scrub.max; render(ALLY.length-1); stop(); return; }
+  tick();
+});
+scrub.addEventListener('input',()=>{ stop(); playBtn.textContent='Play'; render(parseInt(scrub.value,10)); });
+
+render(ALLY.length-1);
+</script>
+</body>
+</html>
