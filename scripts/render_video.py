@@ -298,8 +298,8 @@ audio *= np.minimum(1, np.maximum(0, (T - t) / 2.5))        # fade out
 audio = np.clip(audio / max(1e-9, np.max(np.abs(audio))) * 0.85, -1, 1)
 wav_path = tmp / "score.wav"
 with wave.open(str(wav_path), "wb") as wf:
-    wf.setnchannels(1); wf.setsampwidth(2); wf.setframerate(SR)
-    wf.writeframes((audio * 32767).astype(np.int16).tobytes())
+    wf.setnchannels(2); wf.setsampwidth(2); wf.setframerate(SR)
+    wf.writeframes(np.repeat((audio * 32767).astype(np.int16), 2).tobytes())
 print("score written")
 
 # ---------------- mux ----------------
