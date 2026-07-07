@@ -141,6 +141,7 @@
       <button class="btn ghost" id="restart" type="button">Restart</button>
       <input type="range" id="scrub" min="0" max="1750" step="1" value="0" aria-label="Timeline">
       <label class="toggle"><input type="checkbox" id="axes" checked> axes</label>
+      <label class="toggle"><input type="checkbox" id="score" checked> score</label>
     </div>
     <div class="sources" id="sources" role="group" aria-label="Datasets included in the planet's position"></div>
     <p class="note" style="margin-top:8px">click a dataset name to fly that record alone, from its own first year · checkboxes add or remove sources · "all six" resets</p>
@@ -155,7 +156,11 @@
     is the live disagreement between the six datasets. The "sun" marks the mean 1880–1969 state and
     its faint rings the orbit-era envelope; the planet's color runs blue → ember with the anomaly
     itself. Everything else — stars, corona, comet tail — is staging, and changes no data point.
-    Toggle the axes off for a clean cinematic view (good for screen recording). Built from
+    Toggle the axes off for a clean cinematic view (good for screen recording). The score is an
+    original ambient piece synthesized live in your browser — organ ostinato, drone, and a clock
+    tick in the spirit of a certain film about leaving home — with the mix swelling as the anomaly
+    grows; no recorded music is loaded (the actual Interstellar soundtrack is copyrighted, and
+    overlaying it on a public post invites a mute or takedown). Built from
     scripts/build_compare.py. Generated <span id="gen">—</span>.
   </p>
 </div>
@@ -409,6 +414,15 @@ function draw(fy){
   ctx.fillStyle=body;
   ctx.beginPath(); ctx.arc(hx,hy,9,0,6.28); ctx.fill();
 
+  /* score dynamics: the mix follows the anomaly */
+  if (AC&&playing&&scoreOn()){
+    const I=Math.max(0,Math.min(1,(s.x+0.35)/1.5));
+    layers.filt.frequency.setTargetAtTime(500+4500*I*I,AC.currentTime,0.3);
+    layers.arp.gain.setTargetAtTime(0.05+0.28*I,AC.currentTime,0.3);
+    layers.pad.gain.setTargetAtTime(0.10+0.14*I,AC.currentTime,0.5);
+    layers.tick.gain.setTargetAtTime(0.05+0.07*I,AC.currentTime,0.3);
+  }
+
   /* running leaderboard: hottest years measured so far (raw annual means) */
   const yrNow=Math.floor(s.y);
   if (yrNow!==lastBoardYear){
@@ -435,11 +449,85 @@ function draw(fy){
   else cap.style.opacity='0';
 }
 
+/* ---------- score: original ambient piece in the spirit of Interstellar,
+   synthesized live with WebAudio. Organ ostinato + drone + clock tick;
+   the mix swells with the anomaly itself. No external audio is loaded. */
+let AC=null, master=null, layers=null, schedTimer=null, pauseTimer=null, schedT=0, stepN=0;
+const scoreOn=()=>document.getElementById('score').checked;
+const ARP=[220,329.63,440,523.25,659.25,523.25,440,329.63];      // A minor, organ eighths
+const CHORDS=[[220,261.63,329.63,440],[174.61,220,261.63,349.23]]; // Am, F
+function organ(freq,t,dur,dest,vol){
+  const g=AC.createGain(); g.connect(dest);
+  g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(vol,t+Math.min(0.06,dur*0.2));
+  g.gain.setValueAtTime(vol,t+dur*0.7);
+  g.gain.linearRampToValueAtTime(0,t+dur);
+  [[freq,'triangle',1],[freq*2,'sine',0.35],[freq*1.004,'triangle',0.4]].forEach(sp=>{
+    const o=AC.createOscillator(); o.type=sp[1]; o.frequency.value=sp[0];
+    const og=AC.createGain(); og.gain.value=sp[2];
+    o.connect(og); og.connect(g); o.start(t); o.stop(t+dur+0.05);
+  });
+}
+function scheduleStep(n,t){
+  organ(ARP[n%8],t,0.42,layers.arp,0.5);
+  if (n%16===0) CHORDS[(n>>4)%2].forEach(f=>organ(f,t,6.8,layers.pad,0.16));
+  if (n%2===0){ // the clock tick
+    const o=AC.createOscillator(); o.type='square'; o.frequency.value=2200;
+    const hp=AC.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=1500;
+    const g=AC.createGain();
+    g.gain.setValueAtTime(0.1,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.03);
+    o.connect(hp); hp.connect(g); g.connect(layers.tick);
+    o.start(t); o.stop(t+0.05);
+  }
+}
+function audioInit(){
+  if (AC) return;
+  AC=new (window.AudioContext||window.webkitAudioContext)();
+  master=AC.createGain(); master.gain.value=0; master.connect(AC.destination);
+  const droneG=AC.createGain(); droneG.gain.value=0.11; droneG.connect(master);
+  [[55,0.5],[55.2,0.5],[110,0.22]].forEach(d=>{
+    const o=AC.createOscillator(); o.type='sine'; o.frequency.value=d[0];
+    const g=AC.createGain(); g.gain.value=d[1];
+    o.connect(g); g.connect(droneG); o.start();
+  });
+  layers={arp:AC.createGain(),pad:AC.createGain(),tick:AC.createGain(),filt:AC.createBiquadFilter()};
+  layers.filt.type='lowpass'; layers.filt.frequency.value=700;
+  layers.arp.gain.value=0; layers.arp.connect(layers.filt); layers.filt.connect(master);
+  layers.pad.gain.value=0; layers.pad.connect(master);
+  layers.tick.gain.value=0; layers.tick.connect(master);
+}
+function startScheduler(){
+  if (schedTimer) return;
+  schedT=AC.currentTime+0.1; stepN=0;
+  schedTimer=setInterval(()=>{
+    while (schedT<AC.currentTime+0.4){ scheduleStep(stepN,schedT); schedT+=0.4; stepN++; }
+  },120);
+}
+function stopScheduler(){ if (schedTimer){ clearInterval(schedTimer); schedTimer=null; } }
+function audioResume(){
+  if (REDUCED||!scoreOn()) return;
+  audioInit();
+  if (AC.state==='suspended') AC.resume();
+  if (pauseTimer){ clearTimeout(pauseTimer); pauseTimer=null; }
+  startScheduler();
+  master.gain.setTargetAtTime(0.16,AC.currentTime,0.5);
+}
+function audioPause(slow){
+  if (!AC) return;
+  master.gain.setTargetAtTime(0,AC.currentTime,slow?1.2:0.15);
+  if (pauseTimer) clearTimeout(pauseTimer);
+  pauseTimer=setTimeout(stopScheduler,slow?4500:450);
+}
+document.getElementById('score').addEventListener('change',()=>{
+  if (!AC) return;
+  if (scoreOn()&&playing) audioResume(); else audioPause(false);
+});
+
 /* ---------- playback ---------- */
 const scrub=document.getElementById('scrub');
 scrub.max=String((NY-1)*10);
 let fy=REDUCED?NY-1:0, playing=false, lastT=null, raf=null, lastBoardYear=-1;
-function speed(year){ return year<1968?11:3.6; } // years per second: cruise, then slow for the escape
+function speed(year){ return year<1968?6:2.1; } // years per second: cruise, then slow for the escape
 function frame(t){
   if (!playing) return;
   if (lastT!=null){
@@ -452,17 +540,22 @@ function frame(t){
   if (playing) raf=requestAnimationFrame(frame);
 }
 const playBtn=document.getElementById('play');
-function stop(label){ playing=false; playBtn.textContent=label||'Play'; lastT=null; if(raf)cancelAnimationFrame(raf); }
+function stop(label){
+  playing=false; playBtn.textContent=label||'Play'; lastT=null;
+  if (raf) cancelAnimationFrame(raf);
+  audioPause(label==='Replay');   // long fade at the end, quick duck on pause
+}
 playBtn.addEventListener('click',()=>{
   if (playing){ stop('Play'); return; }
   if (REDUCED){ fy=NY-1; scrub.value=scrub.max; draw(fy); return; }
   if (fy>=NY-1) fy=0;
   playing=true; playBtn.textContent='Pause';
+  audioResume();
   raf=requestAnimationFrame(frame);
 });
 document.getElementById('restart').addEventListener('click',()=>{
   stop('Play'); fy=0; scrub.value='0'; draw(0);
-  if (!REDUCED){ playing=true; playBtn.textContent='Pause'; raf=requestAnimationFrame(frame); }
+  if (!REDUCED){ playing=true; playBtn.textContent='Pause'; audioResume(); raf=requestAnimationFrame(frame); }
 });
 scrub.addEventListener('input',()=>{ stop('Play'); fy=parseInt(scrub.value,10)/10; draw(fy); });
 document.getElementById('axes').addEventListener('change',e=>{ axesOn=e.target.checked; if(!playing) draw(fy); });
@@ -501,8 +594,9 @@ allBtn.addEventListener('click',()=>{
 /* ambient redraw so stars twinkle while paused (skipped for reduced motion) */
 if (!REDUCED) setInterval(()=>{ if (!playing) draw(fy); }, 90);
 
+/* no autoplay: browsers only allow audio after a click, so the flight and
+   its score begin together on Play */
 draw(fy);
-if (!REDUCED){ playing=true; playBtn.textContent='Pause'; raf=requestAnimationFrame(frame); }
 </script>
 </body>
 </html>
