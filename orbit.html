@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>Orbitfall — the century the climate left the sun</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --page: #05070c;
+    --surface: #0d131a;
+    --ink: #f2f5f8;
+    --ink-2: #b6c1cc;
+    --muted: #7c8894;
+    --border: rgba(255,255,255,0.07);
+    --cool: #2b8ff2;
+    --warm: #f4502a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    line-height: 1.55;
+    margin: 0;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 48px 20px 90px; }
+
+  .eyebrow {
+    font-family: Consolas, "SF Mono", ui-monospace, monospace;
+    font-size: 12.5px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 16px;
+  }
+  h1 {
+    font-family: Charter, "Iowan Old Style", Georgia, "Times New Roman", serif;
+    font-weight: 600; font-size: clamp(32px, 5.5vw, 56px); line-height: 1.08;
+    letter-spacing: -0.015em; margin: 0 0 14px; text-wrap: balance;
+  }
+  h1 em { font-style: italic; color: var(--warm); }
+  .lede { color: var(--ink-2); font-size: 17.5px; max-width: 64ch; margin: 0 0 26px; }
+
+  .stage-shell {
+    position: relative; border-radius: 14px; overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: 0 30px 90px rgba(0,0,0,0.6);
+    background: #05070c;
+  }
+  canvas { display: block; width: 100%; height: auto; }
+
+  .hud {
+    position: absolute; left: 22px; bottom: 18px; pointer-events: none;
+    font-family: Consolas, "SF Mono", ui-monospace, monospace;
+  }
+  .hud .year {
+    font-size: clamp(40px, 7vw, 76px); font-weight: 700; line-height: 1;
+    color: var(--ink); text-shadow: 0 0 24px rgba(43,143,242,0.5);
+    font-variant-numeric: tabular-nums;
+  }
+  .hud .stats { margin-top: 6px; font-size: 13px; color: var(--ink-2); }
+  .hud .stats b { color: var(--ink); }
+
+  .caption {
+    position: absolute; right: 24px; top: 20px; max-width: 300px; text-align: right;
+    font-family: Charter, "Iowan Old Style", Georgia, serif; font-style: italic;
+    font-size: clamp(15px, 2.2vw, 21px); color: var(--ink);
+    text-shadow: 0 2px 16px rgba(0,0,0,0.9); opacity: 0; pointer-events: none;
+  }
+
+  .controls {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 16px 2px 6px;
+  }
+  .btn {
+    font: 700 14px "Segoe UI", system-ui, sans-serif;
+    color: var(--page); background: var(--warm); border: none;
+    border-radius: 8px; padding: 8px 18px; cursor: pointer; min-width: 96px;
+  }
+  .btn.ghost { background: none; color: var(--ink-2); border: 1px solid var(--border); font-weight: 600; }
+  .btn:hover { filter: brightness(1.1); }
+  .btn.ghost:hover { color: var(--ink); border-color: var(--muted); }
+  .btn:focus-visible { outline: 2px solid var(--cool); outline-offset: 2px; }
+  input[type="range"] { accent-color: var(--warm); flex: 1; min-width: 200px; }
+  input[type="range"]:focus-visible { outline: 2px solid var(--cool); outline-offset: 3px; }
+  label.toggle {
+    display: inline-flex; gap: 7px; align-items: center;
+    font-size: 13px; color: var(--ink-2); cursor: pointer; user-select: none;
+  }
+
+  .note { font-size: 13px; color: var(--muted); margin-top: 42px; max-width: 76ch; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">orbitfall · the ensemble of six datasets, staged as an orbit</p>
+    <h1>For a century, the climate <em>orbited a sun.</em></h1>
+    <p class="lede">
+      The glowing point below is not the real Sun — it is the <strong>stable climate state</strong>
+      the planet circled for ninety years: the average of every year from 1880 to 1969, measured by
+      six independent datasets. The blue planet is the climate itself, moving through state space —
+      how warm it is, and how fast that is changing. Press play. The orbit is real data. So is the
+      moment it ends.
+    </p>
+
+    <div class="stage-shell">
+      <canvas id="stage" width="1280" height="720" aria-label="Animated phase portrait staged as an orbit: a planet circles a glowing stable state from 1850 to about 1970, then breaks away, heating from blue to ember as it escapes. Position is the ensemble mean of six global temperature datasets."></canvas>
+      <div class="hud">
+        <div class="year" id="hud-year">1850</div>
+        <div class="stats"><span id="hud-anom">—</span> · <span id="hud-rate">—</span> · <span id="hud-spread">—</span></div>
+      </div>
+      <div class="caption" id="caption"></div>
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="play" type="button">Play</button>
+      <button class="btn ghost" id="restart" type="button">Restart</button>
+      <input type="range" id="scrub" min="0" max="1750" step="1" value="0" aria-label="Timeline">
+      <label class="toggle"><input type="checkbox" id="axes" checked> axes</label>
+    </div>
+  </header>
+
+  <p class="note">
+    An honest chart wearing a costume. The planet's position is the ensemble mean of NASA GISTEMP,
+    HadCRUT5, NOAAGlobalTemp, Berkeley Earth, ERA5 and JMA (common 1951–80 baseline, Gaussian-smoothed
+    σ ≈ 4 yr): horizontal — temperature anomaly; vertical — warming rate. The halo around the planet
+    is the live disagreement between the six datasets. The "sun" marks the mean 1880–1969 state and
+    its faint rings the orbit-era envelope; the planet's color runs blue → ember with the anomaly
+    itself. Everything else — stars, corona, comet tail — is staging, and changes no data point.
+    Toggle the axes off for a clean cinematic view (good for screen recording). Built from
+    scripts/build_compare.py. Generated <span id="gen">—</span>.
+  </p>
+</div>
+
+<script src="data/compare.js"></script>
+<script>
+"use strict";
+const DS = window.VS_COMPARE.datasets;
+const META = window.VS_COMPARE.meta;
+document.getElementById('gen').textContent =
+  `${META.generated}, ERA5 through ${META.era5_last_day}`;
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- ensemble track ---------- */
+function gaussianSmooth(arr, sigma){
+  const out=new Array(arr.length), half=Math.ceil(sigma*3);
+  for (let i=0;i<arr.length;i++){
+    let s=0,w=0;
+    for (let k=-half;k<=half;k++){
+      const j=i+k;
+      if (j<0||j>=arr.length) continue;
+      const g=Math.exp(-(k*k)/(2*sigma*sigma));
+      s+=arr[j]*g; w+=g;
+    }
+    out[i]=s/w;
+  }
+  return out;
+}
+const TRACKS = DS.map(d=>{
+  const S=gaussianSmooth(d.anoms,4), n=S.length;
+  const R=S.map((_,i)=>{
+    const a=S[Math.max(0,i-1)], b=S[Math.min(n-1,i+1)];
+    return (b-a)/(Math.min(n-1,i+1)-Math.max(0,i-1))*10;
+  });
+  return {y0:d.years[0], S, R};
+});
+const Y0=Math.min(...TRACKS.map(t=>t.y0));
+const Y1=Math.max(...TRACKS.map(t=>t.y0+t.S.length-1));
+const ENS=[];   // per year: {x anomaly, v rate, spread, n}
+for (let y=Y0;y<=Y1;y++){
+  const pts=[];
+  TRACKS.forEach(t=>{
+    const i=y-t.y0;
+    if (i>=0&&i<t.S.length) pts.push({x:t.S[i],v:t.R[i]});
+  });
+  const mx=pts.reduce((a,p)=>a+p.x,0)/pts.length;
+  const mv=pts.reduce((a,p)=>a+p.v,0)/pts.length;
+  const spread=pts.length>1?Math.max(...pts.map(p=>p.x))-Math.min(...pts.map(p=>p.x)):0;
+  ENS.push({y, x:mx, v:mv, spread, n:pts.length});
+}
+const NY=ENS.length;
+
+/* sun = mean state 1880-1969; rings sized to orbit-era envelope */
+const orbitEra=ENS.filter(e=>e.y>=1880&&e.y<1970);
+const SUN={
+  x:orbitEra.reduce((a,e)=>a+e.x,0)/orbitEra.length,
+  v:orbitEra.reduce((a,e)=>a+e.v,0)/orbitEra.length
+};
+const RING1=Math.max(...orbitEra.map(e=>Math.hypot(e.x-SUN.x,(e.v-SUN.v)*2.2)));
+
+/* ---------- stage ---------- */
+const cv=document.getElementById('stage'), ctx=cv.getContext('2d');
+const W=1280,H=720;
+let xmin=1e9,xmax=-1e9,vmin=1e9,vmax=-1e9;
+ENS.forEach(e=>{ xmin=Math.min(xmin,e.x); xmax=Math.max(xmax,e.x);
+                 vmin=Math.min(vmin,e.v); vmax=Math.max(vmax,e.v); });
+const MX=110,MY=80;
+const px=x=>MX+(x-(xmin-0.12))/((xmax+0.22)-(xmin-0.12))*(W-2*MX);
+const py=v=>H-MY-(v-(vmin-0.05))/((vmax+0.08)-(vmin-0.05))*(H-2*MY);
+
+/* stars */
+const STARS=[];
+(function(){
+  let seed=42;
+  const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+  for (let i=0;i<340;i++)
+    STARS.push({x:rnd()*W,y:rnd()*H,r:rnd()*1.3+0.3,tw:rnd()*6.28,sp:0.5+rnd()*2});
+})();
+
+/* interpolated ensemble state at fractional year */
+function stateAt(fy){
+  const i=Math.max(0,Math.min(NY-1,Math.floor(fy)));
+  const j=Math.min(NY-1,i+1), f=fy-i;
+  const a=ENS[i], b=ENS[j];
+  return {y:a.y+f, x:a.x+(b.x-a.x)*f, v:a.v+(b.v-a.v)*f,
+          spread:a.spread+(b.spread-a.spread)*f, n:a.n};
+}
+function planetColor(x){
+  const t=Math.max(0,Math.min(1,(x+0.3)/1.4));
+  const c1=[80,160,255], c2=[255,90,45];
+  const c=c1.map((v,i)=>Math.round(v+(c2[i]-v)*t));
+  return c;
+}
+
+const CAPTIONS=[
+  [1850,"three instruments are watching"],
+  [1883,"Krakatoa dims the sky"],
+  [1912,"the orbit holds"],
+  [1944,"wartime warmth — still bound"],
+  [1963,"Agung erupts; one last cool swing"],
+  [1975,"the orbit breaks"],
+  [1998,"a super El Niño, absorbed and exceeded"],
+  [2016,"records now fall routinely"],
+  [2024,"the hottest year ever measured"],
+];
+
+let axesOn=true;
+function draw(fy){
+  const s=stateAt(fy);
+  ctx.clearRect(0,0,W,H);
+
+  /* space */
+  const bg=ctx.createRadialGradient(W*0.7,H*0.1,0,W*0.7,H*0.1,W*0.9);
+  bg.addColorStop(0,'rgba(244,80,42,0.05)'); bg.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle='#05070c'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  const now=performance.now()/1000;
+  STARS.forEach(st=>{
+    const a=0.25+0.55*Math.abs(Math.sin(st.tw+now*st.sp*(REDUCED?0:1)));
+    ctx.fillStyle=`rgba(200,220,255,${a})`;
+    ctx.beginPath(); ctx.arc(st.x,st.y,st.r,0,6.28); ctx.fill();
+  });
+
+  /* axes (honesty layer) */
+  if (axesOn){
+    ctx.strokeStyle='rgba(120,140,160,0.14)'; ctx.lineWidth=1;
+    ctx.fillStyle='rgba(124,136,148,0.75)';
+    ctx.font='12px Consolas, monospace'; ctx.textAlign='center';
+    for (let x=Math.ceil((xmin-0.12)/0.25)*0.25; x<=xmax+0.22; x+=0.25){
+      ctx.beginPath(); ctx.moveTo(px(x),MY*0.6); ctx.lineTo(px(x),H-MY*0.6); ctx.stroke();
+      ctx.fillText(x.toFixed(2).replace('-0.00','0.00'), px(x), H-MY*0.6+18);
+    }
+    ctx.textAlign='right';
+    for (let v=Math.ceil((vmin-0.05)/0.1)*0.1; v<=vmax+0.08; v+=0.1){
+      ctx.beginPath(); ctx.moveTo(MX*0.55,py(v)); ctx.lineTo(W-MX*0.55,py(v)); ctx.stroke();
+      ctx.fillText(v.toFixed(1), MX*0.55-6, py(v)+4);
+    }
+    ctx.textAlign='center';
+    ctx.fillText('temperature anomaly (°C vs 1951–80)', W/2, H-14);
+    ctx.save(); ctx.translate(20,H/2); ctx.rotate(-Math.PI/2);
+    ctx.fillText('warming rate (°C / decade)',0,0); ctx.restore();
+  }
+
+  ctx.globalCompositeOperation='lighter';
+
+  /* the sun: the stable state */
+  const sx=px(SUN.x), sy=py(SUN.v);
+  const pulse=1+0.04*Math.sin(now*1.4*(REDUCED?0:1));
+  const sun=ctx.createRadialGradient(sx,sy,0,sx,sy,90*pulse);
+  sun.addColorStop(0,'rgba(255,235,180,0.95)');
+  sun.addColorStop(0.12,'rgba(255,200,120,0.55)');
+  sun.addColorStop(0.4,'rgba(255,150,70,0.12)');
+  sun.addColorStop(1,'rgba(255,150,70,0)');
+  ctx.fillStyle=sun;
+  ctx.beginPath(); ctx.arc(sx,sy,90*pulse,0,6.28); ctx.fill();
+  /* orbit rings: the real envelope of the orbit era */
+  ctx.globalCompositeOperation='source-over';
+  [0.55,0.8,1.05].forEach(k=>{
+    ctx.strokeStyle='rgba(180,200,230,0.10)';
+    ctx.setLineDash([3,7]); ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.ellipse(sx,sy,(px(SUN.x+RING1)-sx)*k,(sy-py(SUN.v+RING1/2.2))*k,0,0,6.28);
+    ctx.stroke();
+  });
+  ctx.setLineDash([]);
+  ctx.globalCompositeOperation='lighter';
+
+  /* comet tail: past ~50 years, tapered and fading */
+  const TAIL=50;
+  for (let k=Math.max(1,Math.floor(fy)-TAIL); k<=Math.floor(fy); k++){
+    const a=ENS[k-0], b=ENS[Math.max(0,k-1)];
+    const age=(Math.floor(fy)-k)/TAIL;
+    const [r,g,bl]=planetColor(a.x);
+    ctx.strokeStyle=`rgba(${r},${g},${bl},${(1-age)*0.5})`;
+    ctx.lineWidth=(1-age)*6+0.5;
+    ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(px(b.x),py(b.v)); ctx.lineTo(px(a.x),py(a.v)); ctx.stroke();
+  }
+
+  /* uncertainty halo: live dataset spread */
+  const hx=px(s.x), hy=py(s.v);
+  const haloR=Math.max(14, (px(s.spread)-px(0))/2+14);
+  if (s.n>1){
+    const halo=ctx.createRadialGradient(hx,hy,0,hx,hy,haloR);
+    halo.addColorStop(0,'rgba(43,143,242,0.20)');
+    halo.addColorStop(1,'rgba(43,143,242,0)');
+    ctx.fillStyle=halo;
+    ctx.beginPath(); ctx.arc(hx,hy,haloR,0,6.28); ctx.fill();
+  }
+
+  /* the planet */
+  const [r,g,b]=planetColor(s.x);
+  const glow=ctx.createRadialGradient(hx,hy,0,hx,hy,26);
+  glow.addColorStop(0,`rgba(${r},${g},${b},0.9)`);
+  glow.addColorStop(0.35,`rgba(${r},${g},${b},0.35)`);
+  glow.addColorStop(1,`rgba(${r},${g},${b},0)`);
+  ctx.fillStyle=glow;
+  ctx.beginPath(); ctx.arc(hx,hy,26,0,6.28); ctx.fill();
+  ctx.globalCompositeOperation='source-over';
+  const body=ctx.createRadialGradient(hx-3,hy-3,1,hx,hy,9);
+  body.addColorStop(0,`rgb(${Math.min(255,r+70)},${Math.min(255,g+70)},${Math.min(255,b+70)})`);
+  body.addColorStop(1,`rgb(${Math.round(r*0.55)},${Math.round(g*0.55)},${Math.round(b*0.55)})`);
+  ctx.fillStyle=body;
+  ctx.beginPath(); ctx.arc(hx,hy,9,0,6.28); ctx.fill();
+
+  /* HUD + caption */
+  const yr=Math.floor(s.y);
+  document.getElementById('hud-year').textContent=yr;
+  document.getElementById('hud-anom').textContent=(s.x>=0?'+':'')+s.x.toFixed(2)+' °C';
+  document.getElementById('hud-rate').textContent=(s.v>=0?'+':'')+s.v.toFixed(2)+' °C/dec';
+  document.getElementById('hud-spread').textContent=
+    s.n>1?('±'+(s.spread/2).toFixed(2)+' °C across '+s.n+' datasets'):'ERA5 only';
+  const cap=document.getElementById('caption');
+  let best=null;
+  CAPTIONS.forEach(c=>{ const d=Math.abs(s.y-c[0]); if (d<5&&(!best||d<best.d)) best={d,t:c[1]}; });
+  if (best){ cap.textContent=best.t; cap.style.opacity=String(Math.max(0,1-best.d/5)); }
+  else cap.style.opacity='0';
+}
+
+/* ---------- playback ---------- */
+const scrub=document.getElementById('scrub');
+scrub.max=String((NY-1)*10);
+let fy=REDUCED?NY-1:0, playing=false, lastT=null, raf=null;
+function speed(year){ return year<1968?11:3.6; } // years per second: cruise, then slow for the escape
+function frame(t){
+  if (!playing) return;
+  if (lastT!=null){
+    fy+=Math.min(0.1,(t-lastT)/1000)*speed(ENS[Math.min(NY-1,Math.floor(fy))].y);
+    if (fy>=NY-1){ fy=NY-1; stop('Replay'); }
+  }
+  lastT=t;
+  scrub.value=String(Math.round(fy*10));
+  draw(fy);
+  if (playing) raf=requestAnimationFrame(frame);
+}
+const playBtn=document.getElementById('play');
+function stop(label){ playing=false; playBtn.textContent=label||'Play'; lastT=null; if(raf)cancelAnimationFrame(raf); }
+playBtn.addEventListener('click',()=>{
+  if (playing){ stop('Play'); return; }
+  if (REDUCED){ fy=NY-1; scrub.value=scrub.max; draw(fy); return; }
+  if (fy>=NY-1) fy=0;
+  playing=true; playBtn.textContent='Pause';
+  raf=requestAnimationFrame(frame);
+});
+document.getElementById('restart').addEventListener('click',()=>{
+  stop('Play'); fy=0; scrub.value='0'; draw(0);
+  if (!REDUCED){ playing=true; playBtn.textContent='Pause'; raf=requestAnimationFrame(frame); }
+});
+scrub.addEventListener('input',()=>{ stop('Play'); fy=parseInt(scrub.value,10)/10; draw(fy); });
+document.getElementById('axes').addEventListener('change',e=>{ axesOn=e.target.checked; if(!playing) draw(fy); });
+
+/* ambient redraw so stars twinkle while paused (skipped for reduced motion) */
+if (!REDUCED) setInterval(()=>{ if (!playing) draw(fy); }, 90);
+
+draw(fy);
+if (!REDUCED){ playing=true; playBtn.textContent='Pause'; raf=requestAnimationFrame(frame); }
+</script>
+</body>
+</html>
