@@ -23,15 +23,25 @@ ERA5 anomalies are shifted onto GISTEMP's 1951–80 baseline by adding GISTEMP's
 mean anomaly over 1991–2020 (ERA5's reference period). The build prints an
 overlap consistency check (mean difference ≈ 0.01 °C over 86 complete years).
 
+## Pages
+
+| Page | What it shows |
+|---|---|
+| `index.html` | The Flattening Well — phase portrait of GISTEMP+ERA5, interactive fold bifurcation, early-warning statistics |
+| `compare.html` | Six thermometers — all six WMO datasets overlaid on a common 1951–80 baseline |
+| `braid.html` | The Braid — ensemble phase portrait with agreement tube and playback |
+| `orbit.html` | Orbitfall — cinematic canvas staging: planet, sun (= mean 1880–1969 state), comet tail, per-dataset solo runs, live hottest-years top 5 |
+
 ## Use
 
 ```
-python scripts/build_data.py   # refresh data/series.json + data/series.js
-start index.html               # open the page (any static server also works)
+python scripts/build_data.py      # refresh data/series.*  (index.html)
+python scripts/build_compare.py   # refresh data/compare.* (compare, braid, orbit)
+start index.html                  # open pages directly (any static server also works)
 ```
 
-No dependencies beyond the Python standard library; the page is a single
-static HTML file with no build step.
+No dependencies beyond the Python standard library; every page is static
+HTML with no build step.
 
 ## Roadmap
 
