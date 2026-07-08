@@ -27,16 +27,16 @@ overlap consistency check (mean difference ≈ 0.01 °C over 86 complete years).
 
 | Page | What it shows |
 |---|---|
-| `index.html` | The Flattening Well — phase portrait of GISTEMP+ERA5, interactive fold bifurcation, early-warning statistics |
+| `flattening-well.html` | The Flattening Well — phase portrait of GISTEMP+ERA5, interactive fold bifurcation, early-warning statistics |
 | `compare.html` | Six thermometers — all six WMO datasets overlaid on a common 1951–80 baseline |
 | `braid.html` | The Braid — ensemble phase portrait with agreement tube and playback |
-| `orbit.html` | Emberward — cinematic canvas staging: planet, sun (= the stable 1880–1969 climate), comet tail, per-dataset solo runs, live hottest-years top 5, synthesized score |
+| `index.html` | Emberward (site root) — cinematic canvas staging: planet, sun (= the stable 1880–1969 climate), comet tail, per-dataset solo runs, live hottest-years top 5, synthesized score |
 
 ## Use
 
 ```
-python scripts/build_data.py      # refresh data/series.*  (index.html)
-python scripts/build_compare.py   # refresh data/compare.* (compare, braid, orbit)
+python scripts/build_data.py      # refresh data/series.*  (flattening-well.html)
+python scripts/build_compare.py   # refresh data/compare.* (index/emberward, compare, braid)
 start index.html                  # open pages directly (any static server also works)
 ```
 
