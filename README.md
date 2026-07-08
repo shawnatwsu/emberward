@@ -30,7 +30,7 @@ overlap consistency check (mean difference ≈ 0.01 °C over 86 complete years).
 | `index.html` | The Flattening Well — phase portrait of GISTEMP+ERA5, interactive fold bifurcation, early-warning statistics |
 | `compare.html` | Six thermometers — all six WMO datasets overlaid on a common 1951–80 baseline |
 | `braid.html` | The Braid — ensemble phase portrait with agreement tube and playback |
-| `orbit.html` | When the Climate Left Home — cinematic canvas staging: planet, sun (= the stable 1880–1969 climate), comet tail, per-dataset solo runs, live hottest-years top 5, synthesized score |
+| `orbit.html` | Emberward — cinematic canvas staging: planet, sun (= the stable 1880–1969 climate), comet tail, per-dataset solo runs, live hottest-years top 5, synthesized score |
 
 ## Use
 
