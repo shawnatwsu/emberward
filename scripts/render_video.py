@@ -303,7 +303,7 @@ with wave.open(str(wav_path), "wb") as wf:
 print("score written")
 
 # ---------------- mux ----------------
-out = ROOT / "orbitfall.mp4"
+out = ROOT / "climate-left-home.mp4"
 def mux(vcodec_args):
     return subprocess.run(
         ["ffmpeg", "-y", "-framerate", str(FPS), "-i", str(tmp / "f%05d.png"),

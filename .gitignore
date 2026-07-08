@@ -1,5 +1,5 @@
 data/raw/
 __pycache__/
-orbitfall.mp4
+*.mp4
 *.webm
 *.gif
