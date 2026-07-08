@@ -681,5 +681,24 @@ drawWellStatic(); renderWell(); settleBall();
 drawSmallLine('ac1','ac1-box','ac1-tip',acSeries,v=>v.toFixed(2));
 drawSmallLine('varc','var-box','var-tip',varSeries,v=>v.toFixed(3));
 </script>
+<script>
+(function(){
+  if (!(location.protocol==='file:'||location.hostname.endsWith('github.io'))) return;
+  var pages=[['index.html','the flattening well'],['compare.html','six thermometers'],
+             ['braid.html','the braid'],['orbit.html','emberward']];
+  var here=location.pathname.split('/').pop()||'index.html';
+  var nav=document.createElement('nav');
+  nav.style.cssText='display:flex;gap:20px;flex-wrap:wrap;margin:0 0 28px;'+
+    'font-family:Consolas,ui-monospace,monospace;font-size:12.5px;'+
+    'letter-spacing:0.08em;text-transform:uppercase;';
+  nav.innerHTML=pages.map(function(p){
+    return p[0]===here
+      ? '<span style="color:var(--warm)">'+p[1]+'</span>'
+      : '<a href="'+p[0]+'" style="color:var(--muted);text-decoration:none">'+p[1]+'</a>';
+  }).join('');
+  var w=document.querySelector('.wrap');
+  w.insertBefore(nav,w.firstChild);
+})();
+</script>
 </body>
 </html>
